@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Durstiges Pferd">
-<title>Das durstige Pferd</title>
+<meta name="apple-mobile-web-app-title" content="Toni und Max">
+<title>Toni und Max</title>
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
   :root{--bg:#FFF6E5;--ink:#3B2F2A;--accent:#FF8A3D;--green:#5BB87A;--blue:#4F8EDC;--red:#E5534B;--t:56px}
@@ -49,14 +49,23 @@
 
   #start{justify-content:center;gap:18px;text-align:center}
   #start h1{font-size:38px;margin:0}
+  .chs{display:flex;gap:10px}
+  .ch{border:0;border-radius:20px;width:100px;padding:12px 0 14px;background:#fff;box-shadow:0 5px 0 #E3D3B8;font:inherit;font-size:18px;font-weight:800;color:var(--ink)}
+  .ch span{display:block;font-size:40px;margin-bottom:4px}
+  .ch:active{transform:translateY(4px);box-shadow:0 1px 0 #E3D3B8}
 </style>
 </head>
 <body>
 
 <section id="start" class="screen on">
-  <div id="startPic" style="width:100%;max-width:460px"></div>
-  <h1>Das durstige Pferd</h1>
-  <button class="btn" id="go">Geschichte starten</button>
+  <div id="startPic" style="width:100%;max-width:460px;border-radius:24px;overflow:hidden"></div>
+  <h1>Toni und Max</h1>
+  <div id="items" style="font-size:16px;font-weight:700;opacity:.7"></div>
+  <div class="chs">
+    <button class="ch" data-ch="durst"><span>💧</span>Durst</button>
+    <button class="ch" data-ch="hunger"><span>🥕</span>Hunger</button>
+    <button class="ch" data-ch="muede"><span>😴</span>Müde</button>
+  </div>
 </section>
 
 <section id="story" class="screen">
@@ -107,7 +116,8 @@ function neigh(){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),l=
   o.connect(g).connect(ac.destination);o.start(t);l.start(t);o.stop(t+1);l.stop(t+1)}
 
 // ================= Zeichnungen =================
-function horse(o={}){ // o.thirsty, o.happy; Kopf-Gruppe id=hhead (dreht um 55,-10)
+function horse(o={}){ // o.thirsty, o.happy, o.sleep, o.items (Anzahl Belohnungen); Kopf-Gruppe id=hhead (dreht um 55,-10)
+  const n=o.items||0;
   return `<g id="horse">
   <path d="M-66 -12 Q-95 10 -88 55" stroke="#5A3418" stroke-width="12" fill="none" stroke-linecap="round"/>
   <rect x="-55" y="15" width="13" height="62" rx="5" fill="#8B5A2B"/><rect x="-36" y="15" width="13" height="62" rx="5" fill="#A0693A"/>
@@ -115,6 +125,8 @@ function horse(o={}){ // o.thirsty, o.happy; Kopf-Gruppe id=hhead (dreht um 55,-
   <rect x="-56" y="70" width="15" height="9" rx="3" fill="#3B2412"/><rect x="-37" y="70" width="15" height="9" rx="3" fill="#3B2412"/>
   <rect x="31" y="70" width="15" height="9" rx="3" fill="#3B2412"/><rect x="49" y="70" width="15" height="9" rx="3" fill="#3B2412"/>
   <ellipse cx="0" cy="0" rx="72" ry="36" fill="#A0693A"/>
+  ${n>=3?`<rect x="-32" y="-36" width="54" height="36" rx="8" fill="#4F8EDC"/><rect x="-32" y="-6" width="54" height="5" fill="#FFD23F"/>`:''}
+  ${n>=4?`<ellipse cx="-5" cy="-36" rx="28" ry="9" fill="#6B3E1E"/><path d="M-5 -30 L-5 10" stroke="#3B2412" stroke-width="2.5"/><rect x="-11" y="8" width="12" height="6" rx="2" fill="#888"/>`:''}
   <g id="hhead">
     <polygon points="40,-20 72,-82 98,-70 72,12" fill="#A0693A"/>
     <path d="M70 -84 Q52 -50 40 -18" stroke="#5A3418" stroke-width="12" fill="none" stroke-linecap="round"/>
@@ -122,7 +134,11 @@ function horse(o={}){ // o.thirsty, o.happy; Kopf-Gruppe id=hhead (dreht um 55,-
     <ellipse cx="102" cy="-66" rx="32" ry="17" fill="#A0693A" transform="rotate(28 102 -66)"/>
     <ellipse cx="120" cy="-55" rx="12" ry="10" fill="#C48A55" transform="rotate(28 120 -55)"/>
     <circle cx="123" cy="-55" r="2.5" fill="#3B2412"/>
-    <circle cx="92" cy="-74" r="4.5" fill="#222"/><circle cx="93.5" cy="-75.5" r="1.5" fill="#fff"/>
+    ${o.sleep?`<path d="M87 -74 Q92 -70 97 -74" stroke="#222" stroke-width="2.5" fill="none" stroke-linecap="round"/>`:`<circle cx="92" cy="-74" r="4.5" fill="#222"/><circle cx="93.5" cy="-75.5" r="1.5" fill="#fff"/>`}
+    ${n>=2?`<ellipse cx="110" cy="-60" rx="20" ry="13" fill="none" stroke="#E5534B" stroke-width="3.5" transform="rotate(28 110 -60)"/><path d="M88 -66 L82 -80" stroke="#E5534B" stroke-width="3.5"/>`:''}
+    ${n>=1?`<g transform="translate(70 -76)"><polygon points="0,0 -12,-8 -12,8" fill="#FF6B8B"/><polygon points="0,0 12,-8 12,8" fill="#FF6B8B"/><circle r="4" fill="#E0457B"/></g>`:''}
+    ${n>=5?`<path d="M52 -30 Q66 -18 78 -12" stroke="#8B5A2B" stroke-width="3" fill="none"/><circle cx="70" cy="-10" r="7" fill="#F4B400"/><circle cx="70" cy="-5" r="2" fill="#8B5A2B"/>`:''}
+    ${n>=6?[[48,-44,'#FF6B8B'],[56,-58,'#FFD23F'],[62,-72,'#9B6BFF'],[44,-30,'#FFD23F']].map(([x,y,c])=>`<circle cx="${x}" cy="${y}" r="5" fill="${c}"/><circle cx="${x}" cy="${y}" r="2" fill="#fff"/>`).join(''):''}
     ${o.thirsty?`<path d="M116 -46 Q118 -34 112 -32 Q108 -36 112 -46 Z" fill="#F27B9A"/>`:''}
     ${o.happy?`<path d="M106 -48 Q114 -42 122 -46" stroke="#3B2412" stroke-width="2.5" fill="none" stroke-linecap="round"/>`:''}
   </g>
@@ -139,12 +155,12 @@ function man(){return `<g>
   <path d="M-7 -132 Q0 -126 7 -132" stroke="#222" stroke-width="2.2" fill="none" stroke-linecap="round"/>
   <ellipse cx="0" cy="-156" rx="32" ry="6" fill="#8B5A2B"/><rect x="-17" y="-176" width="34" height="20" rx="6" fill="#8B5A2B"/>
   </g>`}
-function bucket(fill=0,x=0,y=0,s=1){const h=46,w=50;return `<g transform="translate(${x} ${y}) scale(${s})">
+function bucket(fill=0,x=0,y=0,s=1,c=CONT.durst){const h=46,w=50;return `<g transform="translate(${x} ${y}) scale(${s})">
   <path d="M-30 -48 Q0 -82 30 -48" stroke="#777" stroke-width="3" fill="none"/>
   <clipPath id="bc${x|0}"><polygon points="-28,-48 28,-48 22,0 -22,0"/></clipPath>
-  <polygon points="-28,-48 28,-48 22,0 -22,0" fill="#B9C2CC"/>
-  <rect id="bw" x="-30" y="${-h*fill}" width="60" height="${h}" fill="#4AA3F0" clip-path="url(#bc${x|0})"/>
-  <rect x="-30" y="-50" width="60" height="5" rx="2" fill="#8C96A1"/>
+  <polygon points="-28,-48 28,-48 22,0 -22,0" fill="${c.box}"/>
+  <rect id="bw" x="-30" y="${-h*fill}" width="60" height="${h}" fill="${c.fill}" clip-path="url(#bc${x|0})"/>
+  <rect x="-30" y="-50" width="60" height="5" rx="2" fill="${c.rim}"/>${c.wheel?`<circle cx="0" cy="6" r="9" fill="#444"/>`:""}
   </g>`}
 function cloudG(x,y,s=1,dark=false){const c=dark?'#9AA6B5':'#fff';return `<g transform="translate(${x} ${y}) scale(${s})" fill="${c}">
   <circle cx="0" cy="0" r="22"/><circle cx="22" cy="-12" r="26"/><circle cx="48" cy="0" r="22"/><rect x="0" y="0" width="48" height="20" rx="10"/></g>`}
@@ -152,33 +168,50 @@ function sun(x,y){let r='';for(let i=0;i<8;i++){const a=i*Math.PI/4;r+=`<line x1
   return r+`<circle cx="${x}" cy="${y}" r="24" fill="#FFD23F"/>`}
 function drops(x,y){let s='';[[0,0],[18,14],[36,2],[10,30],[30,34]].forEach(([dx,dy])=>s+=`<path d="M${x+dx} ${y+dy} q5 9 0 12 q-5 -3 0 -12Z" fill="#3B8EEA"/>`);return s}
 
+const CONT={durst:{box:'#B9C2CC',fill:'#4AA3F0',rim:'#8C96A1'},hunger:{box:'#C68B59',fill:'#FF8A3D',rim:'#8B5A2B'},muede:{box:'#5BB87A',fill:'#E8C14A',rim:'#3F9560',wheel:1}};
+function barn(){return `<g><rect x="115" y="120" width="100" height="80" fill="#C0392B"/><polygon points="105,122 165,80 225,122" fill="#8E2A1F"/>
+  <rect x="145" y="150" width="40" height="50" fill="#F4F1EA"/><path d="M145 150 L185 200 M185 150 L145 200" stroke="#C0392B" stroke-width="4"/></g>`}
 function scene(opt){ // opt: sky, horse, man, bucket, extra
   const sky=opt.sky||'#BFE3FF';
   return `<svg viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
   <rect width="400" height="250" fill="${sky}"/>
   ${opt.bg||''}
+  ${(opt.barn||(opt.horse&&(opt.horse.items||0)>=7))?barn():''}
   <rect y="200" width="400" height="50" fill="#7CC46A"/>
   ${opt.man?`<g transform="translate(${opt.manX||70} 222) scale(.85)">${man()}</g>`:''}
   ${opt.horse?`<g id="horsePos" transform="translate(${opt.horseX||240} 146) scale(.85)">${horse(opt.horse)}</g>`:''}
-  ${opt.bucket!=null?`<g id="bucketG">${bucket(opt.bucket,opt.bucketX||170,224,.9)}</g>`:''}
+  ${opt.bucket!=null?`<g id="bucketG">${bucket(opt.bucket,opt.bucketX||170,224,.9,CONT[opt.cont||'durst'])}</g>`:''}
   ${opt.extra||''}
   </svg>`}
 
 // ================= Geschichte =================
-const STEPS=[
- {t:'story',text:'Das ist Toni. Und das ist sein Pferd Max.',sc:{man:1,horse:{},bg:cloudG(60,50)+cloudG(250,40,.8)}},
- {t:'story',text:'Heute ist es sehr heiß. Max hat großen Durst! Aber der Brunnen ist leer.',sc:{man:1,horse:{thirsty:1},bg:sun(160,45)}},
- {t:'story',text:'Toni will Wasser holen. Aber zuerst braucht er deine Hilfe bei fünf Wörtern!',sc:{man:1,horse:{thirsty:1},bg:sun(160,45)}},
- {t:'word',n:0},
- {t:'word',n:1},
- {t:'word',n:2},
- {t:'word',n:3},
- {t:'word',n:4},
- {t:'story',text:'Super, danke! Toni holt einen Eimer. Da wird der Himmel grau, und es fängt an zu regnen! Fang die Tropfen mit dem Eimer! Aber pass auf die Steine auf.',sc:{man:1,horse:{thirsty:1},bucket:0,sky:'#A9C4DD',bg:cloudG(60,45,1,true)+cloudG(220,40,1.2,true)+drops(80,80)+drops(250,85)}},
- {t:'rain'},
- {t:'drink',text:'Toni gibt Max den Eimer mit Wasser. Max trinkt und freut sich!'},
- {t:'end',text:'Danke, dass du Toni und Max geholfen hast! Ende.'}
-];
+const REWARDS=[['eine Schleife','in die Mähne'],['ein Halfter',''],['eine Satteldecke',''],['einen Sattel',''],['eine Glocke',''],['einen Blumenkranz',''],['einen eigenen Stall','']];
+function getItems(){try{return +localStorage.getItem('maxItems')||0}catch(e){return 0}}
+function setItems(n){try{localStorage.setItem('maxItems',n)}catch(e){}}
+let CH='durst';
+const CHAPTERS={
+ durst:{intro:['Heute ist es sehr heiß. Max hat großen Durst!'],
+   pre:'Danke! Toni holt einen Eimer. Da wird der Himmel grau, und es regnet! Fang die Tropfen mit dem Eimer! Pass auf die Steine auf.',
+   finish:'Toni gibt Max den Eimer mit Wasser. Max trinkt und freut sich!',sky:'#A9C4DD',item:'drop',icon:'💧'},
+ hunger:{intro:['Max hat großen Hunger! Sein Bauch knurrt.'],
+   pre:'Danke! Toni holt einen Korb. Da fallen Karotten vom Wagen! Fang sie mit dem Korb! Pass auf die Steine auf.',
+   finish:'Toni gibt Max den Korb mit Karotten. Max frisst und freut sich!',sky:'#BFE3FF',item:'carrot',icon:'🥕'},
+ muede:{intro:['Es wird Abend. Max ist ganz müde und möchte schlafen.'],
+   pre:'Danke! Toni holt die Schubkarre. Der Wind weht Stroh durch die Luft! Fang es für Max sein Bett! Pass auf die Steine auf.',
+   finish:'Toni macht Max ein weiches Bett aus Stroh. Max legt sich hin und schläft ein.',sky:'#3B4A7A',item:'straw',icon:'🌾'}
+};
+let STEPS=[],NW=5;
+function buildSteps(){const c=CHAPTERS[CH],it=getItems();NW=it===0?4:5;const sc=(o={})=>({man:1,horse:{items:it,...o},sky:c.sky==='#3B4A7A'?'#F6C38A':'#BFE3FF',bg:CH==='durst'?sun(160,45):'',...o.sc});
+  STEPS=[
+   {t:'story',text:'Das ist Toni. Und das ist sein Pferd Max. '+c.intro[0],sc:sc({thirsty:CH==='durst'?1:0})},
+   {t:'story',text:'Toni will Max helfen. Aber zuerst braucht er deine Hilfe bei '+(NW===4?'vier':'fünf')+' Wörtern!',sc:sc()},
+   ...Array.from({length:NW},(_,i)=>({t:'word',n:i})),
+   {t:'story',text:c.pre,sc:{man:1,horse:{items:it},bucket:0,cont:CH,sky:c.sky,bg:CH==='durst'?cloudG(60,45,1,true)+cloudG(220,40,1.2,true)+drops(80,80)+drops(250,85):(CH==='muede'?'<circle cx="340" cy="45" r="20" fill="#FFF3B0"/>':'')}},
+   {t:'rain'},
+   {t:'drink',text:c.finish},
+   {t:'reward'},
+   {t:'end',text:'Danke, dass du Toni und Max geholfen hast! Ende.'}
+  ]}
 const WORDS=[['HUT','👒','ein'],['HEU','🌾',''],['BAUM','🌳','ein'],['HAUS','🏠','ein'],['BALL','⚽','ein'],['AUTO','🚗','ein'],
  ['BUS','🚌','ein'],['ZUG','🚂','ein'],['BOOT','⛵','ein'],['EIS','🍦','ein'],['EI','🥚','ein'],['BROT','🍞','ein'],['KUH','🐄','eine'],
  ['HUND','🐕','ein'],['MAUS','🐭','eine'],['UHU','🦉','ein'],['BÄR','🐻','ein'],['AFFE','🐒','ein'],['IGEL','🦔','ein'],['ENTE','🦆','eine'],
@@ -193,15 +226,27 @@ function go(i){step=i;const s=STEPS[i];if(!s)return;
   else if(s.t==='rain')rainStep();
   else if(s.t==='drink')drinkStep(s);
   else if(s.t==='jump')jumpStep(s);
+  else if(s.t==='reward')rewardStep();
   else if(s.t==='end')endStep(s);
 }
 function storyStep(text,sc,withNext){show('story');$('scene').innerHTML=scene(sc);$('text').textContent=text;
   $('nextBtn').classList.toggle('hide',!withNext);say(text,300)}
 $('nextBtn').addEventListener('click',()=>{audio();go(step+1)});
 
-// ---------- Trinken ----------
+// ---------- Versorgen ----------
+const HEARTS=`<g id="hearts" fill="#FF6B8B" opacity="0"><path d="M300 40 c-6 -10 -20 -2 -10 8 l10 9 l10 -9 c10 -10 -4 -18 -10 -8z"/><path d="M335 70 c-4 -7 -14 -1 -7 6 l7 6 l7 -6 c7 -7 -3 -13 -7 -6z"/><path d="M262 62 c-4 -7 -14 -1 -7 6 l7 6 l7 -6 c7 -7 -3 -13 -7 -6z"/></g>`;
 function drinkStep(s){
-  storyStep(s.text,{man:1,horse:{},bucket:1,bucketX:335,bg:sun(160,45),extra:`<g id="hearts" fill="#FF6B8B" opacity="0"><path d="M300 40 c-6 -10 -20 -2 -10 8 l10 9 l10 -9 c10 -10 -4 -18 -10 -8z"/><path d="M335 70 c-4 -7 -14 -1 -7 6 l7 6 l7 -6 c7 -7 -3 -13 -7 -6z"/><path d="M262 62 c-4 -7 -14 -1 -7 6 l7 6 l7 -6 c7 -7 -3 -13 -7 -6z"/></g>`},false);
+  const it=getItems();
+  if(CH==='muede'){ // Schlafen im Stall
+    storyStep(s.text,{man:1,barn:1,sky:'#3B4A7A',bg:'<circle cx="340" cy="45" r="20" fill="#FFF3B0"/><circle cx="60" cy="40" r="2" fill="#fff"/><circle cx="250" cy="30" r="2" fill="#fff"/><circle cx="290" cy="70" r="2" fill="#fff"/>',
+      horse:{items:it,sleep:1},extra:`<ellipse cx="250" cy="222" rx="95" ry="12" fill="#E8C14A"/><g id="zzz" font-family="-apple-system,system-ui" font-weight="900" fill="#fff" opacity="0"><text x="345" y="80" font-size="22">Z</text><text x="362" y="60" font-size="28">Z</text><text x="380" y="36" font-size="34">Z</text></g>`},false);
+    const hp=document.getElementById('horsePos');hp.setAttribute('transform','translate(240 168) scale(.85)');
+    document.getElementById('hhead').setAttribute('transform','rotate(20 55 -10)');
+    let t0=null;function anim(now){if(!t0)t0=now;const t=(now-t0)/1000;
+      document.getElementById('zzz').setAttribute('opacity',Math.min(1,t/1.5)*(0.6+0.4*Math.sin(t*3)));
+      if(t<4)requestAnimationFrame(anim);else $('nextBtn').classList.remove('hide')}
+    requestAnimationFrame(anim);return}
+  storyStep(s.text,{man:1,horse:{items:it},bucket:1,bucketX:335,cont:CH,bg:CH==='durst'?sun(160,45):'',extra:HEARTS},false);
   let happy=false;
   const head=document.getElementById('hhead'),bw=document.querySelector('#bucketG #bw');
   let t0=null,lastSlurp=0;
@@ -209,12 +254,21 @@ function drinkStep(s){
     const down=Math.min(1,t/0.8), up=t>4.6?Math.min(1,(t-4.6)/0.8):0, a=62*down*(1-up)+ (t>0.8&&t<4.6?Math.sin(t*8)*3:0);
     head.setAttribute('transform',`rotate(${a} 55 -10)`);
     const fill=Math.max(0,1-Math.max(0,t-0.8)/3.6);bw.setAttribute('y',-46*fill);
-    if(t>0.8&&t<4.4&&now-lastSlurp>450){slurp();lastSlurp=now}
+    if(t>0.8&&t<4.4&&now-lastSlurp>450){CH==='hunger'?tone(200,120,.08,'square',.12):slurp();lastSlurp=now}
     if(t>5.4&&!happy){happy=true;neigh();document.getElementById('hearts').setAttribute('opacity',1);
       head.insertAdjacentHTML('beforeend','<path d="M106 -48 Q114 -42 122 -46" stroke="#3B2412" stroke-width="2.5" fill="none" stroke-linecap="round"/>')}
     if(t<6.5)requestAnimationFrame(anim);else $('nextBtn').classList.remove('hide');
   }
   requestAnimationFrame(anim);
+}
+// ---------- Belohnung: Max wächst mit ----------
+function rewardStep(){
+  let n=getItems();
+  if(n>=REWARDS.length){storyStep('Max hat schon alles bekommen, was ein Pferd braucht. Er ist das glücklichste Pferd der Welt!',{man:1,horse:{items:n,happy:1},extra:HEARTS.replace('opacity="0"','')},true);return}
+  n++;setItems(n);const r=REWARDS[n-1];
+  storyStep(`Zur Belohnung bekommt Max ${r[0]}${r[1]?' '+r[1]:''}!`,{man:1,horse:{items:n,happy:1},
+    extra:`<g fill="#FFD23F"><path d="M250 40 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4 l10 -4z"/><path d="M340 90 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3z"/><path d="M200 70 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3z"/></g>`},true);
+  jubel();
 }
 // ---------- Wegspringen ----------
 function jumpStep(s){
@@ -231,11 +285,11 @@ function jumpStep(s){
   requestAnimationFrame(anim);
 }
 function endStep(s){
-  show('story');$('scene').innerHTML=scene({man:1,bucket:0,bucketX:150,bg:sun(160,45),
-    extra:`<text x="260" y="150" font-size="44" font-weight="900" fill="#FF8A3D" text-anchor="middle" font-family="-apple-system,system-ui">Ende</text>`});
+  show('story');$('scene').innerHTML=scene({man:1,horse:{items:getItems(),happy:1},bg:sun(340,45),
+    extra:`<text x="160" y="60" font-size="44" font-weight="900" fill="#FF8A3D" text-anchor="middle" font-family="-apple-system,system-ui">Ende</text>`});
   $('text').textContent=s.text;jubel();say(s.text,500);
   $('nextBtn').classList.remove('hide');$('nextBtn').textContent='↻';
-  $('nextBtn').onclick=()=>{$('nextBtn').textContent='➜';$('nextBtn').onclick=null;show('start')};
+  $('nextBtn').onclick=()=>{$('nextBtn').textContent='➜';$('nextBtn').onclick=null;showStart()};
 }
 
 // ================= Wörter legen =================
@@ -245,7 +299,7 @@ let word='',filled=[],tiles=[],wbusy=false;
 function wordStep(st){
   const w=picked[st.n],name=w[0].charAt(0)+w[0].slice(1).toLowerCase(),s={word:w[0],q:'Das ist …',hint:`<div style="font-size:min(30vw,130px);line-height:1;height:100%;display:flex;align-items:center;justify-content:center">${w[1]}</div>`,speak:`Das ist ${w[2]} ${name}`.replace('  ',' ')};
   show('wordScreen');word=s.word;wbusy=true;
-  $('hint').innerHTML=s.hint;$('wq').textContent=`Wort ${st.n+1} von 5`;$('wmsg').textContent='';$('tray').innerHTML='';
+  $('hint').innerHTML=s.hint;$('wq').textContent=`Wort ${st.n+1} von ${NW}`;$('wmsg').textContent='';$('tray').innerHTML='';
   const W=Math.min(innerWidth,600)-28;document.documentElement.style.setProperty('--t',Math.floor(Math.min(62,(W-6*(word.length-1))/word.length))+'px');
   $('slots').innerHTML=[...word].map(ch=>`<div class="slot show">${ch}</div>`).join('');
   say(s.speak,300);
@@ -295,7 +349,7 @@ function rloop(now){if(!running)return;const dt=Math.min(.05,(now-last)/1000);la
   const rim=bk.y-bk.w*.4;
   for(const it of items){const prev=it.y;it.y+=it.v*dt;it.rot+=dt*2;
     if(!it.hit&&prev<rim&&it.y>=rim&&Math.abs(it.x-bk.x)<bk.w/2+it.r*.4){it.hit=true;
-      if(it.st){score=Math.max(0,score-1);shakeT=.4;bonk();if(navigator.vibrate)navigator.vibrate(80)}else{score++;plop();splashes.push({x:it.x,y:rim,t:0})}}}
+      if(it.st){score=Math.max(0,score-1);shakeT=.4;bonk();if(navigator.vibrate)navigator.vibrate(80)}else{score++;plop();if(CH==='durst')splashes.push({x:it.x,y:rim,t:0})}}}
   items=items.filter(it=>!it.hit&&it.y<RH+40);splashes.forEach(s=>s.t+=dt);splashes=splashes.filter(s=>s.t<.4);
   rdraw(now);
   if(score>=GOAL){running=false;jubel();setTimeout(()=>go(step+1),900);return}
@@ -303,25 +357,34 @@ function rloop(now){if(!running)return;const dt=Math.min(.05,(now-last)/1000);la
 function rdrop(x,y,r){ctx.fillStyle='#3B8EEA';ctx.beginPath();ctx.moveTo(x,y-r*1.8);ctx.bezierCurveTo(x+r*.9,y-r*.5,x+r,y+r*.2,x,y+r);ctx.bezierCurveTo(x-r,y+r*.2,x-r*.9,y-r*.5,x,y-r*1.8);ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.7)';ctx.beginPath();ctx.ellipse(x-r*.35,y-r*.1,r*.18,r*.35,-.3,0,7);ctx.fill()}
 function rstone(x,y,r,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle='#8A8F98';ctx.beginPath();ctx.moveTo(-r,-r*.2);ctx.lineTo(-r*.5,-r*.9);ctx.lineTo(r*.5,-r*.8);ctx.lineTo(r,-r*.1);ctx.lineTo(r*.6,r*.8);ctx.lineTo(-r*.6,r*.8);ctx.closePath();ctx.fill();ctx.restore()}
+function rcarrot(x,y,r,rot){ctx.save();ctx.translate(x,y);ctx.rotate(Math.sin(rot)*.4);ctx.fillStyle='#FF8A3D';ctx.beginPath();ctx.moveTo(-r*.6,-r);ctx.lineTo(r*.6,-r);ctx.lineTo(0,r*1.6);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#4CA66A';ctx.beginPath();ctx.ellipse(-4,-r-7,3,8,-.4,0,7);ctx.ellipse(4,-r-7,3,8,.4,0,7);ctx.fill();ctx.restore()}
+function rstraw(x,y,r,rot){ctx.save();ctx.translate(x,y);ctx.rotate(Math.sin(rot)*.5);ctx.fillStyle='#E8C14A';ctx.fillRect(-r*.7,-r*1.3,r*1.4,r*2.6);
+  ctx.strokeStyle='#C99A26';ctx.lineWidth=2;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*r*.4,-r*1.3);ctx.lineTo(i*r*.4,r*1.3);ctx.stroke()}
+  ctx.fillStyle='#B5651D';ctx.fillRect(-r*.8,-3,r*1.6,6);ctx.restore()}
 function rcloud(x,y,s){ctx.fillStyle='#9AA6B5';[[0,0,30],[28,-12,34],[60,0,28],[30,10,30]].forEach(([dx,dy,r])=>{ctx.beginPath();ctx.arc(x+dx*s,y+dy*s,r*s,0,7);ctx.fill()})}
-function rdraw(now){const g=ctx.createLinearGradient(0,0,0,RH);g.addColorStop(0,'#8FA9C4');g.addColorStop(1,'#D3E4F2');ctx.fillStyle=g;ctx.fillRect(0,0,RW,RH);
-  const off=(now/80)%(RW+200);rcloud(RW-off,70,1);rcloud((RW*.5-off*.6+RW+200)%(RW+200)-100,45,.8);
+function rdraw(now){const g=ctx.createLinearGradient(0,0,0,RH);const SK={durst:['#8FA9C4','#D3E4F2'],hunger:['#8EC9F5','#DDF1FF'],muede:['#F29E6B','#FFD9A8']}[CH];g.addColorStop(0,SK[0]);g.addColorStop(1,SK[1]);ctx.fillStyle=g;ctx.fillRect(0,0,RW,RH);
+  if(CH==='durst'){const off=(now/80)%(RW+200);rcloud(RW-off,70,1);rcloud((RW*.5-off*.6+RW+200)%(RW+200)-100,45,.8)}
   ctx.fillStyle='#7CC46A';ctx.fillRect(0,bk.y+4,RW,RH);
-  for(const it of items)it.st?rstone(it.x,it.y,it.r,it.rot):rdrop(it.x,it.y,it.r);
+  for(const it of items)it.st?rstone(it.x,it.y,it.r,it.rot):(CH==='hunger'?rcarrot(it.x,it.y,it.r,it.rot):CH==='muede'?rstraw(it.x,it.y,it.r,it.rot):rdrop(it.x,it.y,it.r));
   // Eimer
   const sx=shakeT>0?Math.sin(now/25)*6:0,x=bk.x+sx,y=bk.y,w=bk.w,h=w*.8,top=y-h;
-  ctx.strokeStyle='#777';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-w/2,top);ctx.quadraticCurveTo(x,top-w*.6,x+w/2,top);ctx.stroke();
-  ctx.save();ctx.beginPath();ctx.moveTo(x-w/2,top);ctx.lineTo(x+w/2,top);ctx.lineTo(x+w*.4,y);ctx.lineTo(x-w*.4,y);ctx.closePath();ctx.fillStyle='#B9C2CC';ctx.fill();ctx.clip();
-  const lvl=y-h*.95*Math.min(1,score/GOAL);ctx.fillStyle='#4AA3F0';ctx.fillRect(x-w/2,lvl+Math.sin(now/200)*1.5,w,h);ctx.restore();
-  ctx.fillStyle='#8C96A1';ctx.fillRect(x-w/2-2,top-4,w+4,8);
+  if(CH!=='muede'){ctx.strokeStyle=CH==='hunger'?'#8B5A2B':'#777';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-w/2,top);ctx.quadraticCurveTo(x,top-w*.6,x+w/2,top);ctx.stroke()}
+  ctx.save();ctx.beginPath();ctx.moveTo(x-w/2,top);ctx.lineTo(x+w/2,top);ctx.lineTo(x+w*.4,y);ctx.lineTo(x-w*.4,y);ctx.closePath();ctx.fillStyle=CONT[CH].box;ctx.fill();ctx.clip();
+  const lvl=y-h*.95*Math.min(1,score/GOAL);ctx.fillStyle=CONT[CH].fill;ctx.fillRect(x-w/2,lvl+Math.sin(now/200)*1.5,w,h);ctx.restore();
+  ctx.fillStyle=CONT[CH].rim;ctx.fillRect(x-w/2-2,top-4,w+4,8);if(CONT[CH].wheel){ctx.fillStyle='#444';ctx.beginPath();ctx.arc(x,y+8,12,0,7);ctx.fill()}
   ctx.fillStyle='#7FC0FF';splashes.forEach(s=>{for(let i=0;i<5;i++){const a=Math.PI*(1.1+i*.2),d=s.t*90;ctx.beginPath();ctx.arc(s.x+Math.cos(a)*d,s.y+Math.sin(a)*d+s.t*s.t*200,3,0,7);ctx.fill()}});
   ctx.fillStyle='rgba(255,255,255,.9)';const tw=150,tx=RW-tw-12,ty=54;ctx.beginPath();ctx.roundRect?ctx.roundRect(tx,ty,tw,46,16):ctx.rect(tx,ty,tw,46);ctx.fill();
-  ctx.fillStyle='#2B3A55';ctx.font='800 24px -apple-system,system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`💧 ${score} / ${GOAL}`,tx+tw/2,ty+23)}
+  ctx.fillStyle='#2B3A55';ctx.font='800 24px -apple-system,system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${CHAPTERS[CH].icon} ${score} / ${GOAL}`,tx+tw/2,ty+23)}
 
 // ================= Start =================
-$('startPic').innerHTML=scene({man:1,horse:{},bg:sun(160,45)+cloudG(60,50)});
-$('go').addEventListener('click',()=>{audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}picked=shuffle(WORDS.slice()).slice(0,5);go(0)});
-document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>{running=false;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')}));
+function showStart(){const n=getItems();
+  $('startPic').innerHTML=scene({man:1,horse:{items:n},bg:sun(160,45)+cloudG(300,40,.7)});
+  $('items').textContent=n?`Max hat schon ${n} von ${REWARDS.length} Geschenken`:'Wähle ein Abenteuer:';show('start')}
+document.querySelectorAll('.ch').forEach(b=>b.addEventListener('click',()=>{audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  CH=b.dataset.ch;buildSteps();picked=shuffle(WORDS.slice()).slice(0,NW);go(0)}));
+showStart();
+document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>{running=false;if('speechSynthesis' in window)speechSynthesis.cancel();showStart()}));
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
 document.addEventListener('gesturestart',e=>e.preventDefault());
 </script>
