@@ -168,10 +168,12 @@ function scene(opt){ // opt: sky, horse, man, bucket, extra
 const STEPS=[
  {t:'story',text:'Das ist Toni. Und das ist sein Pferd Max.',sc:{man:1,horse:{},bg:cloudG(60,50)+cloudG(250,40,.8)}},
  {t:'story',text:'Heute ist es sehr heiß. Max hat großen Durst! Aber der Brunnen ist leer.',sc:{man:1,horse:{thirsty:1},bg:sun(160,45)}},
- {t:'story',text:'Toni will Wasser holen. Aber zuerst braucht er deine Hilfe bei drei Wörtern!',sc:{man:1,horse:{thirsty:1},bg:sun(160,45)}},
+ {t:'story',text:'Toni will Wasser holen. Aber zuerst braucht er deine Hilfe bei fünf Wörtern!',sc:{man:1,horse:{thirsty:1},bg:sun(160,45)}},
  {t:'word',n:0},
  {t:'word',n:1},
  {t:'word',n:2},
+ {t:'word',n:3},
+ {t:'word',n:4},
  {t:'story',text:'Super, danke! Toni holt einen Eimer. Da wird der Himmel grau, und es fängt an zu regnen! Fang die Tropfen mit dem Eimer! Aber pass auf die Steine auf.',sc:{man:1,horse:{thirsty:1},bucket:0,sky:'#A9C4DD',bg:cloudG(60,45,1,true)+cloudG(220,40,1.2,true)+drops(80,80)+drops(250,85)}},
  {t:'rain'},
  {t:'drink',text:'Toni gibt Max den Eimer mit Wasser. Max trinkt und freut sich!'},
@@ -243,7 +245,7 @@ let word='',filled=[],tiles=[],wbusy=false;
 function wordStep(st){
   const w=picked[st.n],name=w[0].charAt(0)+w[0].slice(1).toLowerCase(),s={word:w[0],q:'Das ist …',hint:`<div style="font-size:min(30vw,130px);line-height:1;height:100%;display:flex;align-items:center;justify-content:center">${w[1]}</div>`,speak:`Das ist ${w[2]} ${name}`.replace('  ',' ')};
   show('wordScreen');word=s.word;wbusy=true;
-  $('hint').innerHTML=s.hint;$('wq').textContent=`Wort ${st.n+1} von 3`;$('wmsg').textContent='';$('tray').innerHTML='';
+  $('hint').innerHTML=s.hint;$('wq').textContent=`Wort ${st.n+1} von 5`;$('wmsg').textContent='';$('tray').innerHTML='';
   const W=Math.min(innerWidth,600)-28;document.documentElement.style.setProperty('--t',Math.floor(Math.min(62,(W-6*(word.length-1))/word.length))+'px');
   $('slots').innerHTML=[...word].map(ch=>`<div class="slot show">${ch}</div>`).join('');
   say(s.speak,300);
@@ -318,7 +320,7 @@ function rdraw(now){const g=ctx.createLinearGradient(0,0,0,RH);g.addColorStop(0,
 
 // ================= Start =================
 $('startPic').innerHTML=scene({man:1,horse:{},bg:sun(160,45)+cloudG(60,50)});
-$('go').addEventListener('click',()=>{audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}picked=shuffle(WORDS.slice()).slice(0,3);go(0)});
+$('go').addEventListener('click',()=>{audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}picked=shuffle(WORDS.slice()).slice(0,5);go(0)});
 document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>{running=false;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')}));
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
 document.addEventListener('gesturestart',e=>e.preventDefault());
