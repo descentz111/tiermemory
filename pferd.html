@@ -61,11 +61,7 @@
   <div id="startPic" style="width:100%;max-width:460px;border-radius:24px;overflow:hidden"></div>
   <h1>Toni und Max</h1>
   <div id="items" style="font-size:16px;font-weight:700;opacity:.7"></div>
-  <div class="chs">
-    <button class="ch" data-ch="durst"><span>💧</span>Durst</button>
-    <button class="ch" data-ch="hunger"><span>🥕</span>Hunger</button>
-    <button class="ch" data-ch="muede"><span>😴</span>Müde</button>
-  </div>
+  <button class="btn" id="go">Los geht's!</button>
 </section>
 
 <section id="story" class="screen">
@@ -108,6 +104,12 @@ function tone(f1,f2,dur,type='sine',vol=.35,delay=0){if(!ac)return;const t=ac.cu
 const plop=()=>tone(500+Math.random()*200,1300,.12);
 const bonk=()=>tone(180,70,.25,'triangle',.5);
 const jubel=()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.25,'sine',.3,i*.12));
+function noise(dur,freq,vol=.4,delay=0){if(!ac)return;const t=ac.currentTime+delay,b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const src=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  src.buffer=b;f.type='bandpass';f.frequency.value=freq;g.gain.value=vol;src.connect(f).connect(g).connect(ac.destination);src.start(t)}
+const plumps=()=>{tone(170,70,.18,'triangle',.6);noise(.06,2500,.35,.02)};   // Karotte landet im Korb
+const raschel=()=>noise(.25,3500,.5);                                      // Stroh in die Schubkarre
+const catchSound=()=>CH==='hunger'?plumps():CH==='muede'?raschel():plop();
 const slurp=()=>tone(300,150,.18,'sine',.25);
 function neigh(){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),l=ac.createOscillator(),lg=ac.createGain(),g=ac.createGain();
   o.type='sawtooth';o.frequency.setValueAtTime(700,t);o.frequency.linearRampToValueAtTime(950,t+.25);o.frequency.linearRampToValueAtTime(500,t+1);
@@ -188,7 +190,9 @@ function scene(opt){ // opt: sky, horse, man, bucket, extra
 const REWARDS=[['eine Schleife','in die Mähne'],['ein Halfter',''],['eine Satteldecke',''],['einen Sattel',''],['eine Glocke',''],['einen Blumenkranz',''],['einen eigenen Stall','']];
 function getItems(){try{return +localStorage.getItem('maxItems')||0}catch(e){return 0}}
 function setItems(n){try{localStorage.setItem('maxItems',n)}catch(e){}}
-let CH='durst';
+let CH='durst';const ORDER=['durst','hunger','muede'];
+function getCh(){try{return ORDER[(+localStorage.getItem('maxCh')||0)%3]}catch(e){return 'durst'}}
+function nextCh(){try{localStorage.setItem('maxCh',((+localStorage.getItem('maxCh')||0)+1)%3)}catch(e){}}
 const CHAPTERS={
  durst:{intro:['Heute ist es sehr heiß. Max hat großen Durst!'],
    pre:'Danke! Toni holt einen Eimer. Da wird der Himmel grau, und es regnet! Fang die Tropfen mit dem Eimer! Pass auf die Steine auf.',
@@ -270,6 +274,7 @@ function drinkStep(s){
 }
 // ---------- Belohnung: Max wächst mit ----------
 function rewardStep(){
+  nextCh();
   let n=getItems();
   if(n>=REWARDS.length){storyStep('Max hat schon alles bekommen, was ein Pferd braucht. Er ist das glücklichste Pferd der Welt!',{man:1,horse:{items:n,happy:1},extra:HEARTS.replace('opacity="0"','')},true);return}
   n++;setItems(n);const r=REWARDS[n-1];
@@ -341,7 +346,7 @@ function checkWord(){wbusy=true;const wrong=filled.map((t,i)=>t.ch!==word[i]?i:-
 
 // ================= Regentropfen =================
 const GOAL=20,cv=$('c'),ctx=cv.getContext('2d');
-let RW,RH,bk,items=[],score=0,running=false,last=0,spawnT=0,shakeT=0,splashes=[];
+let RW,RH,bk,items=[],score=0,spawned=0,running=false,last=0,spawnT=0,shakeT=0,splashes=[];
 function rsize(){const d=devicePixelRatio||1;RW=innerWidth;RH=innerHeight;cv.width=RW*d;cv.height=RH*d;ctx.setTransform(d,0,0,d,0,0);
   const w=Math.min(130,RW*.32);bk=bk?{...bk,w}:{x:RW/2,tx:RW/2,w};bk.y=RH-130}
 addEventListener('resize',()=>{if(running)rsize()});
@@ -349,17 +354,20 @@ function mv(e){const t=e.touches?e.touches[0]:e;if(t)bk.tx=Math.max(bk.w/2,Math.
 cv.addEventListener('touchstart',e=>{mv(e);e.preventDefault()},{passive:false});
 cv.addEventListener('touchmove',e=>{mv(e);e.preventDefault()},{passive:false});
 cv.addEventListener('mousemove',e=>{if(e.buttons)mv(e)});
-function rainStep(){show('rain');audio();rsize();items=[];splashes=[];score=0;spawnT=0;shakeT=0;bk.x=bk.tx=RW/2;running=true;last=performance.now();requestAnimationFrame(rloop)}
-function rloop(now){if(!running)return;const dt=Math.min(.05,(now-last)/1000);last=now;const p=score/GOAL;
-  spawnT-=dt;if(spawnT<=0){const st=p>.1&&Math.random()<.18;items.push({x:20+Math.random()*(RW-40),y:-30,v:(160+200*p)*(.85+Math.random()*.3),st,r:st?16:13,rot:Math.random()*6});spawnT=(1-.5*p)*(.7+Math.random()*.6)}
+function rainStep(){show('rain');audio();rsize();items=[];splashes=[];score=0;spawned=0;spawnT=0;shakeT=0;bk.x=bk.tx=RW/2;running=true;last=performance.now();requestAnimationFrame(rloop)}
+function rloop(now){if(!running)return;const dt=Math.min(.05,(now-last)/1000);last=now;const p=spawned/GOAL;
+  spawnT-=dt;if(spawnT<=0&&spawned<GOAL){const st=p>.1&&Math.random()<.18;if(!st)spawned++;items.push({x:20+Math.random()*(RW-40),y:-30,v:(160+200*p)*(.85+Math.random()*.3),st,r:st?16:13,rot:Math.random()*6});spawnT=(1-.5*p)*(.7+Math.random()*.6)}
   bk.x+=(bk.tx-bk.x)*Math.min(1,dt*18);if(shakeT>0)shakeT-=dt;
   const rim=bk.y-bk.w*.4;
   for(const it of items){const prev=it.y;it.y+=it.v*dt;it.rot+=dt*2;
     if(!it.hit&&prev<rim&&it.y>=rim&&Math.abs(it.x-bk.x)<bk.w/2+it.r*.4){it.hit=true;
-      if(it.st){score=Math.max(0,score-1);shakeT=.4;bonk();if(navigator.vibrate)navigator.vibrate(80)}else{score++;plop();if(CH==='durst')splashes.push({x:it.x,y:rim,t:0})}}}
+      if(it.st){score=Math.max(0,score-1);shakeT=.4;bonk();if(navigator.vibrate)navigator.vibrate(80)}else{score++;catchSound();if(CH==='durst')splashes.push({x:it.x,y:rim,t:0})}}}
   items=items.filter(it=>!it.hit&&it.y<RH+40);splashes.forEach(s=>s.t+=dt);splashes=splashes.filter(s=>s.t<.4);
   rdraw(now);
-  if(score>=GOAL){running=false;jubel();setTimeout(()=>go(step+1),900);return}
+  if(spawned>=GOAL&&!items.some(i=>!i.st)){running=false;items=[];
+    if(score>=18){jubel();setTimeout(()=>go(step+1),900)}
+    else{const rainIdx=step;setTimeout(()=>{storyStep(`Du hast ${score} gefangen. Du brauchst mindestens 18. Probier es nochmal!`,{man:1,horse:{items:getItems()},bucket:Math.min(1,score/GOAL),bucketX:170,cont:CH},true);step=rainIdx-1},700)}
+    return}
   requestAnimationFrame(rloop)}
 function rdrop(x,y,r){ctx.fillStyle='#3B8EEA';ctx.beginPath();ctx.moveTo(x,y-r*1.8);ctx.bezierCurveTo(x+r*.9,y-r*.5,x+r,y+r*.2,x,y+r);ctx.bezierCurveTo(x-r,y+r*.2,x-r*.9,y-r*.5,x,y-r*1.8);ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.7)';ctx.beginPath();ctx.ellipse(x-r*.35,y-r*.1,r*.18,r*.35,-.3,0,7);ctx.fill()}
@@ -387,9 +395,9 @@ function rdraw(now){const g=ctx.createLinearGradient(0,0,0,RH);const SK={durst:[
 // ================= Start =================
 function showStart(){const n=getItems();
   $('startPic').innerHTML=scene({man:1,horse:{items:n},bg:sun(160,45)+cloudG(300,40,.7)});
-  $('items').textContent=n?`Max hat schon ${n} von ${REWARDS.length} Geschenken`:'Wähle ein Abenteuer:';show('start')}
-document.querySelectorAll('.ch').forEach(b=>b.addEventListener('click',()=>{audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
-  CH=b.dataset.ch;buildSteps();picked=shuffle(WORDS.slice()).slice(0,NW);go(0)}));
+  $('items').textContent=n?`Max hat schon ${n} von ${REWARDS.length} Geschenken`:'Max braucht deine Hilfe!';show('start')}
+$('go').addEventListener('click',()=>{audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  CH=getCh();buildSteps();picked=shuffle(WORDS.slice()).slice(0,NW);go(0)});
 showStart();
 document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>{running=false;if('speechSynthesis' in window)speechSynthesis.cancel();showStart()}));
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
