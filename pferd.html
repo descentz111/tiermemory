@@ -201,14 +201,21 @@ const CHAPTERS={
    finish:'Toni macht Max ein weiches Bett aus Stroh. Max legt sich hin und schläft ein.',sky:'#3B4A7A',item:'straw',icon:'🌾'}
 };
 let STEPS=[],NW=5;
-function buildSteps(){const c=CHAPTERS[CH],it=getItems();NW=it===0?4:5;const sc=(o={})=>({man:1,horse:{items:it,...o},sky:c.sky==='#3B4A7A'?'#F6C38A':'#BFE3FF',bg:CH==='durst'?sun(160,45):'',...o.sc});
+function buildSteps(){const c=CHAPTERS[CH],it=getItems();const sc=(o={})=>({man:1,horse:{items:it,...o},sky:c.sky==='#3B4A7A'?'#F6C38A':'#BFE3FF',bg:CH==='durst'?sun(160,45):'',...o.sc});
+  const block=(from,len)=>Array.from({length:len},(_,i)=>({t:'word',n:from+i,k:i,of:len}));
+  const gift={durst:'sein Wasser',hunger:'seine Karotten',muede:'sein Strohbett'}[CH];
+  NW=14;
   STEPS=[
    {t:'story',text:'Das ist Toni. Und das ist sein Pferd Max. '+c.intro[0],sc:sc({thirsty:CH==='durst'?1:0})},
-   {t:'story',text:'Toni will Max helfen. Aber zuerst braucht er deine Hilfe bei '+(NW===4?'vier':'fünf')+' Wörtern!',sc:sc()},
-   ...Array.from({length:NW},(_,i)=>({t:'word',n:i})),
+   {t:'story',text:'Toni will Max helfen. Aber zuerst braucht er deine Hilfe bei vier Wörtern!',sc:sc()},
+   ...block(0,4),
    {t:'story',text:c.pre,sc:{man:1,horse:{items:it},bucket:0,cont:CH,sky:c.sky,bg:CH==='durst'?cloudG(60,45,1,true)+cloudG(220,40,1.2,true)+drops(80,80)+drops(250,85):(CH==='muede'?'<circle cx="340" cy="45" r="20" fill="#FFF3B0"/>':'')}},
    {t:'rain'},
+   {t:'story',text:`Super gefangen! Jetzt noch fünf Wörter, dann bekommt Max ${gift}.`,sc:{man:1,horse:{items:it},bucket:1,bucketX:170,cont:CH,sky:'#BFE3FF'}},
+   ...block(4,5),
    {t:'drink',text:c.finish},
+   {t:'story',text:'Max freut sich! Noch fünf Wörter, dann bekommt Max ein Geschenk.',sc:sc({happy:1})},
+   ...block(9,5),
    {t:'reward'},
    {t:'end',text:'Danke, dass du Toni und Max geholfen hast! Ende.'}
   ]}
@@ -299,7 +306,7 @@ let word='',filled=[],tiles=[],wbusy=false;
 function wordStep(st){
   const w=picked[st.n],name=w[0].charAt(0)+w[0].slice(1).toLowerCase(),s={word:w[0],q:'Das ist …',hint:`<div style="font-size:min(30vw,130px);line-height:1;height:100%;display:flex;align-items:center;justify-content:center">${w[1]}</div>`,speak:`Das ist ${w[2]} ${name}`.replace('  ',' ')};
   show('wordScreen');word=s.word;wbusy=true;
-  $('hint').innerHTML=s.hint;$('wq').textContent=`Wort ${st.n+1} von ${NW}`;$('wmsg').textContent='';$('tray').innerHTML='';
+  $('hint').innerHTML=s.hint;$('wq').textContent=`Wort ${st.k+1} von ${st.of}`;$('wmsg').textContent='';$('tray').innerHTML='';
   const W=Math.min(innerWidth,600)-28;document.documentElement.style.setProperty('--t',Math.floor(Math.min(62,(W-6*(word.length-1))/word.length))+'px');
   $('slots').innerHTML=[...word].map(ch=>`<div class="slot show">${ch}</div>`).join('');
   say(s.speak,300);

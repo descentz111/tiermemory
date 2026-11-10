@@ -1,5 +1,5 @@
 // Speichert das Spiel beim ersten Öffnen im iPhone -> danach offline spielbar
-const CACHE = 'tier-memory-v10';
+const CACHE = 'tier-memory-v11';
 const FILES = ['./', './index.html', './woerter-legen.html', './regentropfen.html', './pferd.html', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
