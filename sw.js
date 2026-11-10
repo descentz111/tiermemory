@@ -1,5 +1,5 @@
-// Speichert das Spiel beim ersten Öffnen im iPhone -> danach offline spielbar
-const CACHE = 'tier-memory-v13';
+// Offline-Speicher: mit Internet immer die neueste Version holen, ohne Internet die gespeicherte nehmen
+const CACHE = 'tier-memory-v14';
 const FILES = ['./', './index.html', './woerter-legen.html', './regentropfen.html', './pferd.html', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -9,5 +9,9 @@ self.addEventListener('activate', e => {
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(r => r || fetch(e.request)));
+  e.respondWith(
+    fetch(e.request, { cache: 'no-cache' })
+      .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
+  );
 });
