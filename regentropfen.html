@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Regentropfen">
+<title>Regentropfen</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;background:#BFE3FF;touch-action:none;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif;color:#2B3A55}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .layer{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;
+    padding:24px;background:rgba(191,227,255,.88)}
+  .layer.on{display:flex}
+  h1{font-size:42px;margin:0}
+  p{margin:0;font-size:20px;font-weight:700}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:26px;font-weight:800;color:#fff;background:#4F8EDC;box-shadow:0 5px 0 #2C5E9E}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #2C5E9E}
+  .big{font-size:80px;line-height:1}
+  .home{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:12px;border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #9CC3E6;display:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button class="home" id="homeBtn">🏠</button>
+
+<div class="layer on" id="start">
+  <div class="big">🌧️🥣</div>
+  <h1>Regentropfen</h1>
+  <p>Fang die Tropfen mit der Schüssel!<br>Pass auf die Steine auf.</p>
+  <button class="btn" id="go">Los geht's!</button>
+</div>
+
+<div class="layer" id="end">
+  <div class="big">🎉</div>
+  <h1>Schüssel voll!</h1>
+  <p id="endInfo"></p>
+  <button class="btn" id="again">Nochmal</button>
+</div>
+
+<script>
+const GOAL=30;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W,H,DPR,bowl,items=[],score=0,stones=0,running=false,last=0,spawnT=0,shake=0,startTime=0,splashes=[];
+
+function resize(){DPR=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);
+  const bw=Math.min(150,W*.36);
+  bowl=bowl?{...bowl,w:bw}:{x:W/2,tx:W/2,w:bw};
+  bowl.y=H-120;}
+addEventListener('resize',resize);resize();
+
+// ---------- Steuerung: Schüssel folgt dem Finger ----------
+function moveTo(e){const t=e.touches?e.touches[0]:e;if(t)bowl.tx=Math.max(bowl.w/2,Math.min(W-bowl.w/2,t.clientX))}
+cv.addEventListener('touchstart',e=>{moveTo(e);e.preventDefault()},{passive:false});
+cv.addEventListener('touchmove',e=>{moveTo(e);e.preventDefault()},{passive:false});
+cv.addEventListener('mousemove',e=>{if(e.buttons)moveTo(e)});
+
+// ---------- Töne ----------
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f1,f2,dur,type='sine',vol=.35,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+const plop=()=>tone(500+Math.random()*200,1300,.12);
+const bonk=()=>{tone(180,70,.25,'triangle',.5)};
+const jubel=()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.25,'sine',.3,i*.12));
+function say(t){if(!('speechSynthesis' in window))return;const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';u.rate=.85;u.pitch=1.1;window._u=u;speechSynthesis.speak(u)}
+
+// ---------- Spiel ----------
+function start(){audio();items=[];splashes=[];score=0;stones=0;spawnT=0;shake=0;bowl.x=bowl.tx=W/2;
+  document.querySelectorAll('.layer').forEach(l=>l.classList.remove('on'));document.getElementById('homeBtn').style.display='block';
+  running=true;startTime=performance.now();last=startTime;requestAnimationFrame(loop)}
+function finish(){running=false;jubel();say('Super gemacht! Die Schüssel ist voll!');
+  const sec=Math.round((performance.now()-startTime)/1000);
+  document.getElementById('endInfo').textContent=`${GOAL} Tropfen in ${sec} Sekunden gefangen`+(stones?` – ${stones}× Stein erwischt`:' – kein einziger Stein!');
+  setTimeout(()=>document.getElementById('end').classList.add('on'),600)}
+
+function spawn(p){
+  const stone=p>.1&&Math.random()<.2;
+  items.push({x:20+Math.random()*(W-40),y:-30,v:(170+230*p)*(0.85+Math.random()*.3),stone,r:stone?16:13,rot:Math.random()*6})
+}
+
+function loop(now){
+  if(!running)return;
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  const p=score/GOAL;                       // Fortschritt 0..1 -> Tempo steigt langsam
+  spawnT-=dt;if(spawnT<=0){spawn(p);spawnT=(1.0-.55*p)*(0.7+Math.random()*.6)}
+  bowl.x+=(bowl.tx-bowl.x)*Math.min(1,dt*18);
+  if(shake>0)shake-=dt;
+
+  const rim=bowl.y-bowl.w*.12;
+  for(const it of items){
+    const prev=it.y;it.y+=it.v*dt;it.rot+=dt*2;
+    if(!it.hit&&prev<rim&&it.y>=rim&&Math.abs(it.x-bowl.x)<bowl.w/2+it.r*.4){
+      it.hit=true;
+      if(it.stone){stones++;score=Math.max(0,score-1);shake=.4;bonk();if(navigator.vibrate)navigator.vibrate(80)}
+      else{score++;plop();splashes.push({x:it.x,y:rim,t:0})}
+    }
+  }
+  items=items.filter(it=>!it.hit&&it.y<H+40);
+  splashes.forEach(s=>s.t+=dt);splashes=splashes.filter(s=>s.t<.4);
+  draw(now);
+  if(score>=GOAL){draw(now);finish();return}
+  requestAnimationFrame(loop);
+}
+
+// ---------- Zeichnen ----------
+function cloud(x,y,s){ctx.fillStyle='#fff';[[0,0,30],[28,-12,34],[60,0,28],[30,10,30]].forEach(([dx,dy,r])=>{ctx.beginPath();ctx.arc(x+dx*s,y+dy*s,r*s,0,7);ctx.fill()})}
+function drop(x,y,r){ctx.fillStyle='#3B8EEA';ctx.beginPath();ctx.moveTo(x,y-r*1.8);
+  ctx.bezierCurveTo(x+r*.9,y-r*.5,x+r,y+r*.2,x,y+r);ctx.bezierCurveTo(x-r,y+r*.2,x-r*.9,y-r*.5,x,y-r*1.8);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.7)';ctx.beginPath();ctx.ellipse(x-r*.35,y-r*.1,r*.18,r*.35,-.3,0,7);ctx.fill()}
+function stone(x,y,r,rot){ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.fillStyle='#8A8F98';ctx.beginPath();
+  ctx.moveTo(-r,-r*.2);ctx.lineTo(-r*.5,-r*.9);ctx.lineTo(r*.5,-r*.8);ctx.lineTo(r,-r*.1);ctx.lineTo(r*.6,r*.8);ctx.lineTo(-r*.6,r*.8);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#6B7079';ctx.beginPath();ctx.arc(r*.2,r*.2,r*.25,0,7);ctx.fill();ctx.restore()}
+
+function draw(now){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#8EC9F5');g.addColorStop(1,'#DDF1FF');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  const off=(now/60)%(W+200);cloud(W-off,70,1);cloud((W*.4-off*.6+W+200)%(W+200)-100,40,.8);
+  ctx.fillStyle='#7CC46A';ctx.fillRect(0,bowl.y+bowl.w*.32,W,H);   // Wiese
+  for(const it of items)it.stone?stone(it.x,it.y,it.r,it.rot):drop(it.x,it.y,it.r);
+  // Schüssel
+  const sx=shake>0?Math.sin(now/25)*6:0,bx=bowl.x+sx,by=bowl.y,w=bowl.w,h=w*.42,rim=by-w*.12;
+  ctx.save();ctx.beginPath();ctx.moveTo(bx-w/2,rim);ctx.quadraticCurveTo(bx-w/2,rim+h,bx,rim+h);ctx.quadraticCurveTo(bx+w/2,rim+h,bx+w/2,rim);ctx.closePath();
+  ctx.fillStyle='#F4F1EA';ctx.fill();ctx.clip();
+  const lvl=rim+h-(h*.95)*Math.min(1,score/GOAL);
+  ctx.fillStyle='#4AA3F0';ctx.fillRect(bx-w/2,lvl+Math.sin(now/200)*1.5,w,h+10);ctx.restore();
+  ctx.lineWidth=6;ctx.strokeStyle='#E8643A';ctx.beginPath();ctx.moveTo(bx-w/2,rim);ctx.quadraticCurveTo(bx-w/2,rim+h,bx,rim+h);ctx.quadraticCurveTo(bx+w/2,rim+h,bx+w/2,rim);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(bx,rim,w/2,6,0,0,7);ctx.stroke();
+  // Spritzer
+  ctx.fillStyle='#7FC0FF';splashes.forEach(s=>{for(let i=0;i<5;i++){const a=Math.PI*(1.1+i*.2),d=s.t*90;ctx.beginPath();ctx.arc(s.x+Math.cos(a)*d,s.y+Math.sin(a)*d+s.t*s.t*200,3,0,7);ctx.fill()}});
+  // Anzeige
+    ctx.fillStyle='rgba(255,255,255,.9)';const tw=150,tx=W-tw-12,ty=24;
+  ctx.beginPath();ctx.roundRect?ctx.roundRect(tx,ty+30,tw,46,16):ctx.rect(tx,ty+30,tw,46);ctx.fill();
+  ctx.fillStyle='#2B3A55';ctx.font='800 24px -apple-system,system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(`💧 ${score} / ${GOAL}`,tx+tw/2,ty+53);
+}
+
+document.getElementById('go').addEventListener('click',start);
+document.getElementById('again').addEventListener('click',start);
+document.getElementById('homeBtn').addEventListener('click',()=>{running=false;document.getElementById('homeBtn').style.display='none';document.getElementById('start').classList.add('on')});
+draw(0);
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
