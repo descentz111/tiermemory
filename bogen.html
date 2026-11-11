@@ -125,13 +125,15 @@ function draw(now){
   ctx.fillStyle='#7CC46A';ctx.fillRect(0,gy(),W,H);
   // Maßband 0–10
   ctx.font='700 13px Schul,system-ui';ctx.textAlign='center';ctx.textBaseline='top';
-  for(let v=0;v<=10;v++){const x=xs(v);ctx.fillStyle='#4A7A3C';ctx.fillRect(x-1,gy(),2,8);ctx.fillStyle='#2F5524';ctx.fillText(v,x,gy()+10)}
+  for(let v=0;v<=10;v++){const x=xs(v);ctx.fillStyle='rgba(74,122,60,.45)';ctx.fillRect(x-1,gy(),2,6)}
   // Scheibe
   if(task){const x=xs(task.r),h=Math.min(46,H*.2),cy=gy()-h*1.05;
     ctx.fillStyle='#8B5A2B';ctx.fillRect(x-3,cy,6,gy()-cy);
     [['#fff',1],['#E5534B',.8],['#fff',.6],['#E5534B',.4],['#FFD23F',.2]].forEach(([c,s])=>{ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x,cy,h*.32*s,h*s,0,0,7);ctx.fill()});}
   // steckende Pfeile
-  stuck.forEach(a=>arrowAt(a.x,a.y,a.ang,a.hit));
+  stuck.forEach(a=>{arrowAt(a.x,a.y,a.ang,a.hit);
+    ctx.font='700 30px Schul,system-ui';ctx.textAlign='center';ctx.textBaseline='top';ctx.lineWidth=5;ctx.strokeStyle='#fff';ctx.fillStyle=a.hit?'#3F9560':'#E5534B';
+    ctx.strokeText(a.v,a.x,gy()+8);ctx.fillText(a.v,a.x,gy()+8)});
   // Schütze mit Bogen
   archer();
   if(arrow){const q=Math.min(1,(now-arrow.t)/arrow.dur),sx=x0()+18,sy=gy()-50,ex=xs(arrow.v),ey=arrow.ey,peak=Math.max(30,(ex-sx)*.35);
@@ -171,7 +173,7 @@ function shoot(){
   const v=Math.round(pow);ready=false;$('hold').classList.add('wait');twang();
   const h0=Math.min(46,H*.2);arrow={v,t:performance.now(),dur:500+v*60,ey:v===task.r?gy()-h0*1.05:gy()-4};
   later(()=>{const hit=v===task.r,h=Math.min(46,H*.2);
-    stuck.push({x:xs(v),y:hit?gy()-h*1.05:gy()-4,ang:hit?0:.5,hit});arrow=null;thud();
+    stuck.push({x:xs(v),y:hit?gy()-h*1.05:gy()-4,ang:hit?0:.5,hit,v});arrow=null;thud();
     if(hit){ok();if(tries===0)firstTry++;solved++;res.push(tries===0?'⭐':'✔️');drawStrip();
       $('task').classList.add('ok');$('task').querySelector('.q').textContent=task.r;$('msg').textContent='Treffer! 🎯';
       say(`Treffer! ${spoken(task)} ist ${task.r}.`,200);later(next,2800);return}
