@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tier-Orchester">
+<title>Tier-Orchester</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--ink:#3B2F2A;--t:150px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;color:var(--ink);
+    background:radial-gradient(ellipse at 50% 30%,#FFF6E5 0%,#F7E3C2 100%);
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#9B6BFF;box-shadow:0 5px 0 #6E45C9}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #6E45C9}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0}
+  p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:64px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #E3D3B8}
+  #notes{display:flex;gap:4px;background:#fff;border-radius:16px;padding:6px 10px;box-shadow:0 2px 0 #E3D3B8;font-size:20px}
+  #notes span{opacity:.18;transition:opacity .3s,transform .3s}
+  #notes span.on{opacity:1;transform:scale(1.15)}
+  #lives{font-size:20px;letter-spacing:2px;min-width:46px;text-align:right}
+  #stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;width:100%}
+  #grid{display:grid;grid-template-columns:repeat(2,var(--t));gap:18px}
+  .ani{width:var(--t);height:var(--t);border:0;border-radius:50%;font-size:calc(var(--t)*.5);display:flex;align-items:center;justify-content:center;
+    background:var(--c);box-shadow:0 8px 0 var(--d);transition:transform .12s,filter .12s;filter:saturate(.55) brightness(.95)}
+  .ani.lit{transform:scale(1.1);filter:saturate(1.2) brightness(1.15);box-shadow:0 8px 0 var(--d),0 0 0 8px rgba(255,255,255,.8),0 0 40px var(--c)}
+  .ani:active{transform:translateY(4px)}
+  #grid.wait .ani{pointer-events:none}
+  .ani.bow{animation:bow .7s ease-in-out 3}
+  @keyframes bow{50%{transform:translateY(-14px) rotate(-6deg)}}
+  #msg{font-size:24px;font-weight:800;min-height:32px;text-align:center}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #again:active{transform:translateY(4px);box-shadow:0 2px 0 #3F9560}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#9A8F85}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🐻🐸🐱🐦</div>
+  <h1>Tier-Orchester</h1>
+  <p>Hör gut zu und spiel nach!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div id="notes"></div>
+    <div id="lives"></div>
+  </header>
+  <div id="stage">
+    <div id="msg"></div>
+    <div id="grid" class="wait"></div>
+  </div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big" id="endAni">🐻🐸🐱🐦</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=200){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.1;window._u=u;
+  sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+// weicher Glockenspiel-Ton
+function note(f,dur=.6,vol=.35,delay=0){if(!ac)return;const t=ac.currentTime+delay;
+  [[1,'sine',1],[2,'sine',.25],[4,'sine',.08]].forEach(([m,type,v])=>{const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f*m;
+    g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol*v,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur*(m===1?1:.5));
+    o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)})}
+const oops=()=>{note(196,.35,.3);note(185,.45,.3,.18)};
+function applaus(){if(!ac)return;for(let k=0;k<70;k++){const t=ac.currentTime+.05+Math.random()*2.4*(k/70+.3),d=.05,
+  b=ac.createBuffer(1,ac.sampleRate*d,ac.sampleRate),x=b.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/x.length,3);
+  const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=b;f.type='bandpass';f.frequency.value=1200+Math.random()*1500;
+  g.gain.value=.5*(1-k/90);s.connect(f).connect(g).connect(ac.destination);s.start(t)}}
+
+// ---------- Tiere: Tonleiter do-mi-sol-do ----------
+const ANI=[{e:'🐻',f:261.6,c:'#F28B82',d:'#C5594F'},{e:'🐸',f:329.6,c:'#7ED08A',d:'#4A9E58'},
+           {e:'🐱',f:392.0,c:'#7FB7F2',d:'#4A86C4'},{e:'🐦',f:523.3,c:'#FFD966',d:'#C9A21E'}];
+const GOAL=8,LIVES=3;
+let seq=[],pos=0,lives=LIVES,best=0,mistakes=0,gid=0,listening=false;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+
+function build(){
+  const t=Math.floor(Math.min((innerWidth-60)/2,(innerHeight-260)/2,190));document.documentElement.style.setProperty('--t',t+'px');
+  $('grid').innerHTML=ANI.map((a,i)=>`<button class="ani" data-i="${i}" style="--c:${a.c};--d:${a.d}">${a.e}</button>`).join('');
+  $('grid').querySelectorAll('.ani').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();tap(+b.dataset.i)}));
+}
+function drawTop(){
+  $('notes').innerHTML=Array.from({length:GOAL},(_,i)=>`<span class="${i<best?'on':''}">♪</span>`).join('');
+  $('lives').textContent='❤️'.repeat(lives)+'🤍'.repeat(LIVES-lives);
+}
+function light(i,ms=380){const b=$('grid').children[i];b.classList.add('lit');note(ANI[i].f);later(()=>b.classList.remove('lit'),ms)}
+
+function playSeq(){
+  listening=false;$('grid').classList.add('wait');$('msg').textContent='Hör gut zu … 👂';pos=0;
+  const step=Math.max(420,700-seq.length*35);
+  seq.forEach((i,k)=>later(()=>light(i,step*.65),600+k*step));
+  later(()=>{listening=true;$('grid').classList.remove('wait');$('msg').textContent='Jetzt du! 👆'},600+seq.length*step);
+}
+function tap(i){
+  if(!listening)return;audio();
+  if(i!==seq[pos]){listening=false;$('grid').classList.add('wait');lives--;mistakes++;oops();drawTop();
+    if(lives<=0){$('msg').textContent='';later(finish,900);return}
+    $('msg').textContent='Hör nochmal genau zu!';say('Hör nochmal genau zu!');later(playSeq,1800);return}
+  light(i,250);pos++;
+  if(pos<seq.length)return;
+  listening=false;$('grid').classList.add('wait');best=seq.length;drawTop();
+  if(best>=GOAL){later(finish,700);return}
+  $('msg').textContent=['Toll!','Super!','Richtig!','Prima!'][rand(4)]+' 🎵';
+  seq.push(rand(4));later(playSeq,1100);
+}
+function finish(){
+  const stars=best>=GOAL?3:best>=5?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${best} von ${GOAL} Tönen geschafft · Fehler: ${mistakes}`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<stars)later(()=>{x.classList.add('on');note([523.3,659.3,784][i],.5,.3)},400+i*500)});
+  const ea=$('endAni');ea.classList.remove('bow');void ea.offsetWidth;
+  if(stars===3){later(()=>{applaus();ea.classList.add('bow');say('Bravo! Ein tolles Konzert!',2600)},1900)}
+  else later(()=>say(stars===2?'Toll gespielt! Beim nächsten Mal schaffst du noch mehr Töne!':'Gut gemacht! Hör beim nächsten Mal ganz genau hin!'),1500);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;seq=[rand(4)];best=0;lives=LIVES;mistakes=0;show('game');build();drawTop();$('msg').textContent='';
+  say('Die Tiere spielen dir etwas vor. Spiel es nach!');later(playSeq,2600)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;listening=false;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+addEventListener('resize',()=>{if($('game').classList.contains('on'))build()});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
