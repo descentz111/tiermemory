@@ -63,6 +63,12 @@
   .lb.new{background:#FFE7A8}
   .lb.new::after{content:'neu';position:absolute;top:-10px;right:-8px;background:#E5534B;color:#fff;font-size:11px;padding:2px 6px;border-radius:8px}
   .sym.let{font-weight:900;color:var(--lc);font-family:-apple-system,"SF Pro Rounded",system-ui,sans-serif;letter-spacing:.02em}
+  #intro{justify-content:center;gap:10px;text-align:center}
+  #inLet{font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;font-size:150px;line-height:1.1;color:#FF8A3D}
+  #inEmo{font-size:110px;line-height:1.1}
+  #inWord{font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;font-size:48px}
+  #inWord b{color:#FF8A3D}
+  .inAnim{animation:cardIn .4s}
   #msg{font-size:22px;font-weight:800;min-height:30px;text-align:center}
 </style>
 </head>
@@ -75,6 +81,14 @@
   <div id="letters"></div>
   <div id="progress" style="font-size:16px;font-weight:700;opacity:.75"></div>
   <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="intro" class="screen">
+  <p id="inTitle"></p>
+  <div id="inLet"></div>
+  <div id="inEmo"></div>
+  <div id="inWord"></div>
+  <p style="opacity:.55;font-size:16px">Tippen zum Überspringen</p>
 </section>
 
 <section id="game" class="screen">
@@ -247,7 +261,24 @@ function showStart(){
   $('letters').querySelectorAll('.lb').forEach(b=>b.addEventListener('click',()=>{audio();const l=b.dataset.l,a=ANIM[l][0];sayLetterThenName(a[1])}));
   $('progress').textContent=`Du kennst ${n} von ${ORDER.length} Buchstaben`;show('start');
 }
+// ---------- Einleitung: neue Buchstaben kurz vorstellen (Tippen überspringt) ----------
+function getIntro(){try{return +localStorage.getItem('bbIntro')||0}catch(e){return 0}}
 function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  const n=getN(),fresh=ORDER.slice(Math.min(getIntro(),n),n);
+  if(!fresh.length){beginGame();return}
+  gid++;show('intro');$('inTitle').textContent=fresh.length>1?'Deine Buchstaben':'Dein neuer Buchstabe';
+  const step=i=>{
+    if(i>=fresh.length){endIntro();return}
+    const l=fresh[i],a=ANIM[l][0];
+    $('inLet').textContent=l+l.toLowerCase();$('inEmo').textContent=a[0];$('inWord').innerHTML=`<b>${l}</b>${a[1].slice(1)}`;
+    ['inLet','inEmo','inWord'].forEach(id=>{const e=$(id);e.classList.remove('inAnim');void e.offsetWidth;e.classList.add('inAnim')});
+    sayLetterThenName(a[1]);later(()=>step(i+1),3600)};
+  step(0);
+}
+function endIntro(){try{localStorage.setItem('bbIntro',getN())}catch(e){}
+  clearTimeout(seqT);if('speechSynthesis' in window)speechSynthesis.cancel();beginGame()}
+$('intro').addEventListener('click',endIntro);
+function beginGame(){
   gid++;learned=ORDER.slice(0,getN());errTotal=0;round=0;me=0;mx=0;show('game');newRound()}
 $('go').addEventListener('click',startGame);
 $('again').addEventListener('click',showStart);
