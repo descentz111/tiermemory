@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Spiele">
+<title>Kinderspiele – Übersicht</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#FFF6E5;color:#3B2F2A;font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif;
+    padding:calc(env(safe-area-inset-top) + 16px) 14px calc(env(safe-area-inset-bottom) + 24px)}
+  h1{font-family:Schul,-apple-system,system-ui,sans-serif;font-size:34px;margin:0 0 4px;text-align:center}
+  .sub{text-align:center;font-size:15px;opacity:.6;margin-bottom:18px}
+  h2{font-size:18px;margin:22px 4px 10px;display:flex;align-items:center;gap:8px}
+  h2 .dot{width:12px;height:12px;border-radius:50%;background:var(--c)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  a.tile{display:flex;flex-direction:column;align-items:center;text-align:center;text-decoration:none;color:inherit;background:#fff;border-radius:22px;
+    padding:14px 10px 12px;box-shadow:0 4px 0 #E3D3B8;border-top:6px solid var(--c);transition:transform .1s}
+  a.tile:active{transform:translateY(3px);box-shadow:0 1px 0 #E3D3B8}
+  .emo{font-size:46px;line-height:1.1}
+  .name{font-weight:800;font-size:17px;margin-top:6px}
+  .desc{font-size:13px;opacity:.65;margin-top:3px;line-height:1.3}
+  .foot{text-align:center;font-size:12px;opacity:.5;margin-top:26px;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Kinderspiele</h1>
+<div class="sub">Antippen zum Spielen</div>
+<div id="list"></div>
+<div class="foot">Tipp: Diese Seite über „Teilen → Zum Home-Bildschirm“ ablegen –<br>dann sind alle Spiele mit einem Symbol erreichbar.</div>
+<script>
+const GROUPS=[
+ {t:'Buchstaben & Lesen',c:'#E5534B',g:[
+  ['tierblick3.html','🔤','Buchstaben-Blick','Neue Buchstaben lernen, gegen Max'],
+  ['pferd.html','🐴','Toni und Max','Geschichte mit Wörtern und Fang-Spiel'],
+  ['woerter-legen.html','🧩','Wörter legen','Buchstaben in die richtige Reihenfolge'],
+  ['silben.html','👏','Silben klatschen','Jede Silbe einmal klatschen'],
+  ['index.html','🃏','Tier-Memory','Paare finden mit Anfangsbuchstaben'],
+  ['tierblick2.html','🔍','Tierblick 2','Gleiches Tier finden + Buchstabe'],
+  ['tierblick.html','👀','Tierblick','Gleiches Tier auf beiden Karten']]},
+ {t:'Rechnen',c:'#2E7CC4',g:[
+  ['bogen.html','🏹','Bogenschütze','Rechnen und Bogen spannen bis 12'],
+  ['klettern.html','⛰️','Bergsteiger','Rechnen bis 10, Seil nach oben']]},
+ {t:'Logik',c:'#9B6BFF',g:[
+  ['eisenbahn.html','🚂','Eisenbahn','Schienen drehen bis zum Ziel'],
+  ['perlenkette.html','🐚','Perlenkette','Was kommt als Nächstes?']]},
+ {t:'Musik & Rhythmus',c:'#E0A800',g:[
+  ['orchester.html','🎵','Tier-Orchester','Töne merken und nachspielen'],
+  ['echotrommel.html','🥁','Echo-Trommel','Rhythmus nachtrommeln'],
+  ['taktzug.html','🔔','Takt-Zug','Im Takt die Glocke läuten']]},
+ {t:'Geschick',c:'#3F9560',g:[
+  ['regentropfen.html','🌧️','Regentropfen','Tropfen mit der Schüssel fangen']]}
+];
+document.getElementById('list').innerHTML=GROUPS.map(gr=>`<h2 style="--c:${gr.c}"><span class="dot"></span>${gr.t}</h2>
+  <div class="grid">${gr.g.map(([h,e,n,d])=>`<a class="tile" style="--c:${gr.c}" href="${h}"><div class="emo">${e}</div><div class="name">${n}</div><div class="desc">${d}</div></a>`).join('')}</div>`).join('');
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

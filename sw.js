@@ -1,6 +1,6 @@
 // Offline-Speicher: mit Internet immer die neueste Version holen, ohne Internet die gespeicherte nehmen
-const CACHE = 'tier-memory-v48';
-const FILES = ['./', './index.html', './woerter-legen.html', './regentropfen.html', './pferd.html', './eisenbahn.html', './perlenkette.html', './tierblick.html', './tierblick2.html', './tierblick3.html', './klettern.html', './orchester.html', './taktzug.html', './echotrommel.html', './silben.html', './bogen.html', './schulschrift.woff2', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
+const CACHE = 'tier-memory-v49';
+const FILES = ['./', './index.html', './woerter-legen.html', './regentropfen.html', './pferd.html', './eisenbahn.html', './perlenkette.html', './tierblick.html', './tierblick2.html', './tierblick3.html', './klettern.html', './orchester.html', './taktzug.html', './echotrommel.html', './silben.html', './bogen.html', './start.html', './schulschrift.woff2', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });
