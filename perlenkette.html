@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Perlenkette">
+<title>Perlenkette</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--ink:#3B4A5A;--s:56px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;color:var(--ink);
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif;
+    background:linear-gradient(#BFE8FF 0%,#BFE8FF 14%,#4FB3E0 14%,#3A9FD0 24%,#F7E2B5 24%,#F2D49A 100%)}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 10px calc(env(safe-area-inset-bottom) + 16px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#2E9BD6;box-shadow:0 5px 0 #1D6F9C}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #1D6F9C}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0} h2{font-size:30px;margin:0}
+  .row{display:flex;gap:6px;justify-content:center}
+  .row svg{width:54px;height:54px}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .pill{background:#fff;border-radius:16px;padding:8px 14px;font-size:18px;font-weight:800;box-shadow:0 2px 0 #C9DCE8}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #C9DCE8}
+  #chainWrap{flex:1;width:100%;display:flex;align-items:center;justify-content:center}
+  #chain{position:relative}
+  #chain>svg.string{position:absolute;left:0;top:0;pointer-events:none}
+  .bead{position:absolute;width:var(--s);height:var(--s);transition:transform .25s}
+  .bead svg{width:100%;height:100%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.15))}
+  .gap{border:3px dashed #B08A55;border-radius:50%;background:rgba(255,255,255,.35)}
+  .gap.cur{border-color:#E5534B;animation:pulse 1s infinite}
+  @keyframes pulse{50%{transform:scale(1.12)}}
+  .bead.pop{animation:pop .4s}
+  @keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+  .bead.shine svg{animation:shine .9s}
+  @keyframes shine{50%{filter:drop-shadow(0 0 10px #fff) brightness(1.25)}}
+  #msg{font-size:22px;font-weight:800;min-height:30px;margin:6px 0 10px;text-align:center}
+  #choices{display:flex;gap:14px;justify-content:center;margin-bottom:6px}
+  .choice{width:96px;height:96px;border:0;border-radius:24px;background:#fff;box-shadow:0 5px 0 #D8C49A;padding:10px}
+  .choice:active{transform:translateY(4px);box-shadow:0 1px 0 #D8C49A}
+  .choice svg{width:100%;height:100%}
+  .choice.shake{animation:shake .35s}
+  .choice.glow{box-shadow:0 0 0 5px #FFD23F,0 5px 0 #D8C49A}
+  @keyframes shake{25%{transform:translateX(6px)}75%{transform:translateX(-6px)}}
+  #done{display:flex;flex-direction:column;gap:6px;align-items:center}
+  #done .row svg{width:30px;height:30px}
+  #done .row{background:rgba(255,255,255,.6);border-radius:14px;padding:4px 8px;gap:2px}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="row" id="hero"></div>
+  <h1>Perlenkette</h1>
+  <p style="margin:0;font-size:20px;font-weight:700">Was kommt als Nächstes?</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div class="pill" id="lvl">Kette 1 / 8</div>
+    <div style="width:46px"></div>
+  </header>
+  <div id="chainWrap"><div id="chain"></div></div>
+  <div id="msg"></div>
+  <div id="choices"></div>
+</section>
+
+<section id="end" class="screen">
+  <h2>8 Ketten gemacht! 🎉</h2>
+  <div id="done"></div>
+  <button class="btn" id="again">Nochmal</button>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=300){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.85;u.pitch=1.1;window._u=u;
+  sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function wave(){if(!ac)return;const dur=1.2,b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++){const p=i/d.length;d[i]=(Math.random()*2-1)*Math.sin(Math.PI*p)}
+  const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain(),t=ac.currentTime;s.buffer=b;f.type='lowpass';
+  f.frequency.setValueAtTime(400,t);f.frequency.linearRampToValueAtTime(1800,t+.5);f.frequency.linearRampToValueAtTime(500,t+dur);g.gain.value=.35;
+  s.connect(f).connect(g).connect(ac.destination);s.start()}
+const klick=()=>{tone(1300,1900,.08,'sine',.25);tone(2000,2600,.06,'sine',.15,.05)};
+const bonk=()=>tone(180,70,.2,'triangle',.45);
+const jubel=()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.25,'sine',.3,i*.12));
+
+// ---------- Muscheln & Perlen (SVG) ----------
+function shell(c,d){let r='';for(let k=0;k<7;k++){const a=Math.PI*(1.05+k*.15);r+=`<line x1="50" y1="84" x2="${50+Math.cos(a)*40}" y2="${84+Math.sin(a)*58}" stroke="${d}" stroke-width="3"/>`}
+  const id='cl'+c.slice(1),sh='M50 86 L12 48 Q16 12 50 10 Q84 12 88 48 Z';
+  return `<clipPath id="${id}"><path d="${sh}"/></clipPath><path d="${sh}" fill="${c}" stroke="${d}" stroke-width="2"/><g clip-path="url(#${id})">${r}</g><path d="M38 80 L50 92 L62 80 Z" fill="${d}"/>`}
+function pearl(c,h){return `<circle cx="50" cy="50" r="30" fill="${c}"/><circle cx="50" cy="50" r="30" fill="none" stroke="${h}" stroke-width="3"/><circle cx="40" cy="39" r="9" fill="#fff" opacity=".85"/>`}
+function star(){let p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?18:42;p.push((50+Math.cos(a)*r).toFixed(1)+','+(52+Math.sin(a)*r).toFixed(1))}
+  return `<polygon points="${p.join(' ')}" fill="#FF8A3D" stroke="#E0661E" stroke-width="3" stroke-linejoin="round"/><circle cx="50" cy="52" r="5" fill="#FFC48A"/>`}
+function snail(){return `<ellipse cx="50" cy="56" rx="38" ry="34" fill="#F0D3A6" stroke="#C9965A" stroke-width="3"/><path d="M50 56 m0 -4 a4 4 0 1 1 -4 6 a10 10 0 1 1 14 -10 a17 17 0 1 1 -24 20 a25 25 0 1 1 34 -30" fill="none" stroke="#A9773E" stroke-width="4" stroke-linecap="round"/>`}
+const ITEMS=[
+ {n:'Muschel',svg:shell('#F7A9C0','#D9708F')},
+ {n:'Perle',svg:pearl('#F4F1EA','#D8D2C4')},
+ {n:'Seestern',svg:star()},
+ {n:'Schnecke',svg:snail()},
+ {n:'blaue Perle',svg:pearl('#5BA8F0','#2E7CC4')},
+ {n:'gelbe Muschel',svg:shell('#FFD966','#D9A92E')}
+];
+const svgOf=i=>`<svg viewBox="0 0 100 100">${ITEMS[i].svg}</svg>`;
+$('hero').innerHTML=[0,1,2,3,4].map(svgOf).join('');
+
+// ---------- Stufen ----------
+const LEVELS=[
+ {u:'AB',pool:[0,1],g:1},{u:'AB',pool:[0,1,2,3],g:1},{u:'AAB',pool:[0,1,2,3],g:1},{u:'ABC',pool:[0,1,2,3],g:1},
+ {u:'ABB',pool:[0,1,2,3],g:2},{u:'AABB',pool:[0,1,2,3],g:2},{u:'ABC',pool:[0,5,1,4],g:2,similar:1},{u:'AABC',pool:[0,1,2,3,4,5],g:3}
+];
+const LOB=['Super!','Toll gemacht!','Prima!','Richtig schön!','Klasse!','Wunderbar!'];
+let lvl=0,seq=[],shown=0,cur=0,unitItems=[],busy=false,wrongCount=0,done=[];
+
+function newChain(){
+  const L=LEVELS[lvl];busy=false;wrongCount=0;
+  const letters=[...new Set(L.u)];let pick=shuffle(L.pool.slice());
+  if(L.similar){pick=shuffle([[0,5,shuffle([1,4])[0]],[1,4,shuffle([0,5])[0]]][rand(2)])}
+  const map={};letters.forEach((ch,i)=>map[ch]=pick[i]);
+  unitItems=[...L.u].map(ch=>map[ch]);
+  const reps=Math.max(2,Math.ceil(5/L.u.length));shown=L.u.length*reps;
+  seq=Array.from({length:shown+L.g},(_,k)=>unitItems[k%unitItems.length]);
+  cur=shown;
+  $('lvl').textContent=`Kette ${lvl+1} / 8`;$('msg').textContent='Was kommt als Nächstes?';
+  layout();renderChoices();
+}
+
+let pos=[];
+function layout(){
+  const n=seq.length,rows=n>7?2:1,per=Math.ceil(n/rows),W=Math.min(innerWidth,620)-24;
+  const s=Math.floor(Math.min(66,(W-10)/per));document.documentElement.style.setProperty('--s',s+'px');
+  const rowH=s*1.9,H=rows*rowH,ch=$('chain');ch.style.width=W+'px';ch.style.height=H+'px';
+  pos=[];let paths='';
+  for(let r=0;r<rows;r++){const cnt=Math.min(per,n-r*per),y0=r*rowH+s*.35,sag=s*.45,x0=(W-cnt*s)/2;
+    let d=`M ${x0-8} ${y0+s/2}`;
+    for(let k=0;k<cnt;k++){const t=(k+.5)/cnt,x=x0+k*s,y=y0+sag*Math.sin(Math.PI*t);pos.push([x,y])}
+    const xs=x0-8,xe=x0+cnt*s+8;d=`M ${xs} ${y0+s/2} Q ${W/2} ${y0+s/2+sag*2} ${xe} ${y0+s/2}`;
+    paths+=`<path d="${d}" fill="none" stroke="#8B6B4A" stroke-width="3"/>`}
+  ch.innerHTML=`<svg class="string" width="${W}" height="${H}">${paths}</svg>`;
+  seq.forEach((it,k)=>{const el=document.createElement('div');el.className='bead';el.dataset.k=k;
+    el.style.left=pos[k][0]+'px';el.style.top=pos[k][1]+'px';
+    if(k<cur)el.innerHTML=svgOf(it);else el.classList.add('gap');
+    if(k===cur)el.classList.add('cur');ch.appendChild(el)});
+}
+function renderChoices(){
+  const right=seq[cur],others=shuffle([...new Set(unitItems.concat(LEVELS[lvl].pool))].filter(i=>i!==right)).slice(0,2);
+  const opts=shuffle([right,...others]);
+  $('choices').innerHTML=opts.map(i=>`<button class="choice" data-i="${i}">${svgOf(i)}</button>`).join('');
+  $('choices').querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>pick(+b.dataset.i,b)));
+}
+function pick(i,btn){
+  if(busy)return;audio();
+  if(i!==seq[cur]){
+    bonk();btn.classList.remove('shake');void btn.offsetWidth;btn.classList.add('shake');wrongCount++;
+    const names=unitItems.map(k=>ITEMS[k].n).join(', ');
+    say(`Hör mal: ${names}, ${names} … was kommt dann?`);$('msg').textContent='Schau genau hin!';
+    if(wrongCount>=2){const r=[...$('choices').children].find(b=>+b.dataset.i===seq[cur]);r&&r.classList.add('glow')}
+    return}
+  klick();wrongCount=0;
+  const el=document.querySelector(`.bead[data-k="${cur}"]`);el.classList.remove('gap','cur');el.innerHTML=svgOf(i);el.classList.add('pop');
+  cur++;
+  if(cur<seq.length){document.querySelector(`.bead[data-k="${cur}"]`).classList.add('cur');$('msg').textContent='Und was kommt dann?';renderChoices();return}
+  // Kette fertig
+  busy=true;$('choices').innerHTML='';const lob=LOB[rand(LOB.length)];$('msg').textContent=lob+' 🎉';
+  wave();setTimeout(jubel,500);say(lob,600);
+  document.querySelectorAll('.bead').forEach((b,k)=>setTimeout(()=>b.classList.add('shine'),k*70));
+  done.push(seq.slice());
+  setTimeout(()=>{lvl++;if(lvl<LEVELS.length)newChain();else finish()},2400);
+}
+function finish(){
+  $('done').innerHTML=done.map(s=>`<div class="row">${s.slice(0,9).map(svgOf).join('')}</div>`).join('');
+  show('end');jubel();say('Toll! Du hast acht Ketten gemacht!');
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  lvl=0;done=[];show('game');newChain();say('Was kommt als Nächstes? Tippe auf das richtige Teil.')}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{busy=true;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+addEventListener('resize',()=>{if($('game').classList.contains('on'))layout()});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
