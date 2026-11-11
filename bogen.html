@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Bogenschütze">
-<title>Ritter-Bogenschießen</title>
+<title>Bogenschütze</title>
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
   @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
   :root{--ink:#2F3B4A}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;color:var(--ink);background:linear-gradient(#BFE0F7,#E6F4FC 55%,#CFE8B8);
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;color:var(--ink);background:linear-gradient(#CFE8D0,#E8F4E0 55%,#BFDDA8);
     font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
   .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
     padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
@@ -55,8 +55,8 @@
 <body>
 
 <section id="start" class="screen on">
-  <div class="big">🏰🏹🎯</div>
-  <h1>Ritter-Bogenschießen</h1>
+  <div class="big">🌲🏹🎯</div>
+  <h1>Bogenschütze</h1>
   <p>Rechne aus, wie weit die Scheibe ist.<br>Halte gedrückt und lass beim<br>richtigen Wert los!</p>
   <button class="btn" id="go">Los geht's!</button>
 </section>
@@ -124,7 +124,7 @@ const cv=$('cv'),ctx=cv.getContext('2d');let W,H;
 function resize(){const d=devicePixelRatio||1,b=$('cvWrap').getBoundingClientRect();W=b.width;H=b.height;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
 addEventListener('resize',()=>{if($('game').classList.contains('on'))resize()});
 const gy=()=>H*.82,x0=()=>Math.max(28,W*.1),xs=v=>x0()+(W*.93-x0())*v/MAXV;
-// ---------- Zeichnen: Ritterturnier ----------
+// ---------- Zeichnen: Waldlichtung ----------
 let sparks=[],wob=0;
 function draw(now){
   const t=now/1000,G=gy();
@@ -132,16 +132,16 @@ function draw(now){
   // Wolken
   ctx.fillStyle='rgba(255,255,255,.9)';[[.15,.12,1],[.62,.08,.8]].forEach(([fx,fy,sc],k)=>{const cx=((fx*W+t*8*(k+1))%(W+120))-60,cy=fy*H;
     [[0,0,18],[18,-8,22],[38,0,17],[18,6,18]].forEach(([dx,dy,r])=>{ctx.beginPath();ctx.arc(cx+dx*sc,cy+dy*sc,r*sc,0,7);ctx.fill()})});
-  // Hügel + Burg
-  ctx.fillStyle='#A8D08D';ctx.beginPath();ctx.moveTo(0,G*.78);ctx.quadraticCurveTo(W*.35,G*.6,W*.6,G*.72);ctx.quadraticCurveTo(W*.85,G*.55,W,G*.62);ctx.lineTo(W,G);ctx.lineTo(0,G);ctx.fill();
-  castle(W*.72,G*.62,Math.min(W,H)*.0042,t);
-  // Zuschauer-Zaun
-  const fy=G*.86;ctx.fillStyle='#8B5A2B';ctx.fillRect(0,fy,W,5);ctx.fillRect(0,fy+12,W,4);for(let x=6;x<W;x+=26)ctx.fillRect(x,fy-6,5,26);
-  // Turnierwiese mit Streifen
-  g=ctx.createLinearGradient(0,G-6,0,H);g.addColorStop(0,'#7CC46A');g.addColorStop(1,'#5FA850');ctx.fillStyle=g;ctx.fillRect(0,G-6,W,H);
-  ctx.fillStyle='rgba(255,255,255,.08)';for(let x=0;x<W;x+=60)ctx.fillRect(x,G-6,30,H);
-  // Wimpelkette oben
-  bunting(t);
+  // Waldrand hinten (zwei Reihen Bäume)
+  forest(G*.62,'#4E8F55','#3F7A47',.75,1);forest(G*.74,'#3F7A47','#2F6338',1,2);
+  // Lichtstrahlen
+  ctx.save();ctx.globalAlpha=.12+.04*Math.sin(t);ctx.fillStyle='#FFF6C8';
+  [[.3,.18],[.55,.12],[.78,.15]].forEach(([fx,w])=>{ctx.beginPath();ctx.moveTo(W*fx,0);ctx.lineTo(W*(fx+w),0);ctx.lineTo(W*(fx+w*1.8),G);ctx.lineTo(W*(fx+w*.6),G);ctx.fill()});ctx.restore();
+  // Wiese
+  g=ctx.createLinearGradient(0,G-8,0,H);g.addColorStop(0,'#86C96E');g.addColorStop(1,'#5FA850');ctx.fillStyle=g;ctx.fillRect(0,G-8,W,H);
+  ctx.fillStyle='rgba(255,255,255,.07)';for(let x=0;x<W;x+=14){ctx.fillRect(x,G-8,2,6)}
+  // Pilze, Blumen, Eichhörnchen
+  deco(t);
   // Zielscheibe
   if(task)target(xs(task.r),G,t);
   stuck.forEach(a=>{arrowAt(a.x+(a.hit?Math.sin(t*30)*wob*3:0),a.y,a.ang,a.hit);
@@ -158,21 +158,18 @@ function draw(now){
   wob*=.94;
 }
 function star(x,y,r){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}ctx.fill()}
-function castle(cx,base,s,t){
-  const stone='#B9B2A6',dark='#9C9488';ctx.fillStyle=stone;
-  const tower=(x,w,h)=>{ctx.fillStyle=stone;ctx.fillRect(x,base-h,w,h);ctx.fillStyle=dark;for(let k=0;k<w;k+=w/4)ctx.fillRect(x+k,base-h-6*s,w/8,6*s);
-    ctx.fillStyle='#5A4A3A';ctx.fillRect(x+w*.38,base-h*.7,w*.24,h*.18)};
-  ctx.fillRect(cx-40*s,base-34*s,80*s,34*s);ctx.fillStyle=dark;for(let k=-40;k<40;k+=10)ctx.fillRect(cx+k*s,base-40*s,5*s,6*s);
-  tower(cx-58*s,22*s,58*s);tower(cx+36*s,22*s,58*s);tower(cx-11*s,22*s,74*s);
-  ctx.fillStyle='#5A4A3A';ctx.beginPath();ctx.arc(cx,base-12*s,9*s,Math.PI,0);ctx.fillRect(cx-9*s,base-12*s,18*s,12*s);ctx.fill();
-  [[cx-47*s,'#E5534B'],[cx,'#2E7CC4'],[cx+47*s,'#FFD23F']].forEach(([x,c],k)=>{const top=base-(k===1?80:64)*s;
-    ctx.strokeStyle='#5A3418';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,top-16*s);ctx.stroke();
-    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,top-16*s);ctx.lineTo(x+(12+Math.sin(t*4+k)*2)*s,top-12*s+Math.sin(t*5+k)*1.5);ctx.lineTo(x,top-8*s);ctx.fill()});
-}
-function bunting(t){const cols=['#E5534B','#FFD23F','#2E7CC4','#3F9560'],y0=8;ctx.strokeStyle='#6B4A2E';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(0,y0);ctx.quadraticCurveTo(W/2,y0+22,W,y0);ctx.stroke();
-  for(let k=0,n=Math.floor(W/30);k<=n;k++){const x=k*W/n,q=x/W,y=y0+22*4*q*(1-q)*.5+ 0,sw=Math.sin(t*3+k)*2;
-    ctx.fillStyle=cols[k%4];ctx.beginPath();ctx.moveTo(x-8,y);ctx.lineTo(x+8,y);ctx.lineTo(x+sw,y+18);ctx.fill()}}
+function pine(x,base,h,c1,c2){ctx.fillStyle='#6B4A2E';ctx.fillRect(x-h*.04,base-h*.25,h*.08,h*.25);
+  for(let k=0;k<3;k++){const y=base-h*.2-k*h*.24,w=h*(.36-k*.08);ctx.fillStyle=k%2?c2:c1;ctx.beginPath();ctx.moveTo(x-w,y);ctx.lineTo(x+w,y);ctx.lineTo(x,y-h*.38);ctx.fill()}}
+function leafy(x,base,h,c1,c2){ctx.fillStyle='#7A5233';ctx.fillRect(x-h*.05,base-h*.45,h*.1,h*.45);
+  [[0,-.62,.3,c1],[-.2,-.5,.22,c2],[.2,-.52,.22,c2],[0,-.8,.22,c1]].forEach(([dx,dy,r,c])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x+dx*h,base+dy*h,r*h,0,7);ctx.fill()})}
+const TREES=Array.from({length:14},(_,i)=>({f:i/13+(Math.random()-.5)*.05,h:.7+Math.random()*.5,pine:Math.random()<.55}));
+function forest(base,c1,c2,sc,row){TREES.forEach((tr,i)=>{if(i%2!==row-1)return;const x=tr.f*W,h=Math.min(W,H)*.32*sc*tr.h;
+  (tr.pine?pine:leafy)(x,base,h,c1,c2)})}
+const DECO=[[.2,'🍄',.9],[.47,'🌼',.7],[.63,'🍄',.7],[.86,'🌷',.8],[.35,'🌿',.8]];
+function deco(t){const G=gy();ctx.textAlign='center';ctx.textBaseline='bottom';
+  DECO.forEach(([f,e,sc])=>{ctx.font=`${Math.round(22*sc)}px system-ui`;ctx.fillText(e,W*f,G+2)});
+  ctx.font='26px system-ui';ctx.fillText('🐿️',W*.95,G*.74-Math.abs(Math.sin(t*2))*3);
+  const bx=W*.5+Math.sin(t*.7)*W*.3,by=G*.35+Math.sin(t*2.3)*20;ctx.font='18px system-ui';ctx.fillText('🦋',bx,by)}
 function target(x,G,t){const h=Math.min(46,H*.2),cy=G-h*1.05,dx=Math.sin(t*30)*wob*3;
   ctx.strokeStyle='#8B5A2B';ctx.lineWidth=5;ctx.lineCap='round';
   ctx.beginPath();ctx.moveTo(x-h*.35,G);ctx.lineTo(x+dx,cy-h*.2);ctx.lineTo(x+h*.35,G);ctx.moveTo(x+dx,cy);ctx.lineTo(x+h*.1,G);ctx.stroke();
@@ -180,24 +177,27 @@ function target(x,G,t){const h=Math.min(46,H*.2),cy=G-h*1.05,dx=Math.sin(t*30)*w
   [['#fff',.88],['#E5534B',.7],['#fff',.52],['#E5534B',.34],['#FFD23F',.17]].forEach(([c,f])=>{ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x+dx,cy,h*.3*f/.88,h*f,0,0,7);ctx.fill()})}
 function knight(t){const x=x0(),y=gy(),p=pow/MAXV,br=Math.sin(t*2)*1;
   // Beine
-  ctx.strokeStyle='#59616B';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x-2,y-30);ctx.lineTo(x+7,y);ctx.stroke();
+  ctx.strokeStyle='#6B4A2E';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x-2,y-30);ctx.lineTo(x+7,y);ctx.stroke();
   // Köcher mit Pfeilen
   ctx.save();ctx.translate(x-12,y-58+br);ctx.rotate(-.35);ctx.fillStyle='#8B5A2B';ctx.fillRect(-5,-4,10,30);
   ['#E5534B','#FFD23F','#2E7CC4'].forEach((c,k)=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(-4+k*4,-4);ctx.lineTo(-6+k*4,-12);ctx.lineTo(-2+k*4,-12);ctx.fill()});ctx.restore();
   // Waffenrock
-  ctx.fillStyle='#C0392B';ctx.beginPath();ctx.moveTo(x-11,y-58+br);ctx.lineTo(x+11,y-58+br);ctx.lineTo(x+13,y-28);ctx.lineTo(x-13,y-28);ctx.fill();
-  ctx.fillStyle='#FFD23F';ctx.beginPath();ctx.moveTo(x,y-52+br);ctx.lineTo(x+6,y-44+br);ctx.lineTo(x,y-36+br);ctx.lineTo(x-6,y-44+br);ctx.fill();
-  // Helm mit Federbusch
-  const hy=y-70+br;ctx.fillStyle='#A9B4BF';ctx.beginPath();ctx.arc(x,hy,12,Math.PI,0);ctx.lineTo(x+12,hy+8);ctx.lineTo(x-12,hy+8);ctx.fill();
-  ctx.fillStyle='#59616B';ctx.fillRect(x+1,hy-1,11,3);
-  ctx.fillStyle='#E5534B';ctx.beginPath();ctx.moveTo(x-2,hy-11);ctx.quadraticCurveTo(x-18,hy-26+Math.sin(t*3)*2,x-22,hy-6);ctx.quadraticCurveTo(x-12,hy-14,x+2,hy-10);ctx.fill();
+  ctx.fillStyle='#3F7A47';ctx.beginPath();ctx.moveTo(x-11,y-58+br);ctx.lineTo(x+11,y-58+br);ctx.lineTo(x+13,y-28);ctx.lineTo(x-13,y-28);ctx.fill();
+  ctx.fillStyle='#6B4A2E';ctx.fillRect(x-12,y-40+br,24,4);ctx.fillStyle='#E0A800';ctx.fillRect(x-3,y-41+br,6,6);
+  // Kopf mit grünem Hut und Feder
+  const hy=y-68+br;ctx.fillStyle='#F6CBA0';ctx.beginPath();ctx.arc(x,hy,10,0,7);ctx.fill();
+  ctx.fillStyle='#222';ctx.beginPath();ctx.arc(x+4,hy-1,1.6,0,7);ctx.fill();
+  ctx.strokeStyle='#222';ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(x+3,hy+3,3,.2,1.4);ctx.stroke();
+  ctx.fillStyle='#3F7A47';ctx.beginPath();ctx.moveTo(x-13,hy-5);ctx.lineTo(x+14,hy-5);ctx.lineTo(x+4,hy-19);ctx.quadraticCurveTo(x-6,hy-16,x-13,hy-5);ctx.fill();
+  ctx.fillStyle='#2F6338';ctx.fillRect(x-13,hy-7,27,3);
+  ctx.strokeStyle='#E5534B';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-6,hy-9);ctx.quadraticCurveTo(x-16,hy-24+Math.sin(t*3)*2,x-24,hy-26);ctx.stroke();
   // Bogen spannt sich mit pow
   const bx=x+24,by=y-50,R=30,pull=6+p*22;
   ctx.strokeStyle='#6B3E1E';ctx.lineWidth=5;ctx.beginPath();ctx.arc(bx-R*.4,by,R,-1.1,1.1);ctx.stroke();
   ctx.fillStyle='#FFD23F';ctx.beginPath();ctx.arc(bx-R*.4+R*Math.cos(0),by,3,0,7);ctx.fill();
   const tx=bx-R*.4+R*Math.cos(1.1),ty1=by-R*Math.sin(1.1),ty2=by+R*Math.sin(1.1);
   ctx.strokeStyle='#EEE';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(tx,ty1);ctx.lineTo(tx-pull,by);ctx.lineTo(tx,ty2);ctx.stroke();
-  ctx.strokeStyle='#A9B4BF';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x+6,y-52+br);ctx.lineTo(tx-pull,by);ctx.stroke();
+  ctx.strokeStyle='#F6CBA0';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x+6,y-52+br);ctx.lineTo(tx-pull,by);ctx.stroke();
   if(!arrow&&ready)arrowAt(tx-pull+26,by,0,false);
 }
 function arrowAt(x,y,ang,hit){ctx.save();ctx.translate(x,y);ctx.rotate(ang);
