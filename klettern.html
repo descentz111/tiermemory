@@ -57,7 +57,7 @@
 <section id="game" class="screen">
   <header>
     <button class="home" id="homeBtn">🏠</button>
-    <div class="pill" id="lvl">0 / 10</div>
+    <div class="pill" id="lvl">0 / 7</div>
     <div style="width:46px"></div>
   </header>
   <div id="sceneWrap"><svg id="scene" viewBox="0 0 300 380"></svg></div>
@@ -92,8 +92,11 @@ const hoch=k=>tone(400+k*60,600+k*60,.25,'sine',.25);
 const jubel=()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,f,.28,'sine',.3,i*.13));
 
 // ---------- Berg ----------
-const STEPS=10;
-const P=Array.from({length:STEPS+1},(_,i)=>{const t=i/STEPS;return[i===STEPS?150:150+(i%2?1:-1)*58*(1-t*.75),345-i*29.5]});
+const STEPS=7;
+let P=[];
+// Haken-Positionen: Abstand nach oben = Ergebnis der Aufgabe (längeres Seil = weiter)
+function buildPath(){const tot=tasks.reduce((s,t)=>s+t.r,0);let c=0;
+  P=[[150,345]];tasks.forEach((t,i)=>{c+=t.r;const f=c/tot,y=345-f*319;P.push([i===STEPS-1?150:150+(i%2?-1:1)*62*(1-f*.8),y])})}
 function climber(){return `<g id="cl">
   <line x1="-5" y1="2" x2="-13" y2="-14" stroke="#F6CBA0" stroke-width="5" stroke-linecap="round"/>
   <line x1="5" y1="2" x2="13" y2="-14" stroke="#F6CBA0" stroke-width="5" stroke-linecap="round"/>
@@ -106,7 +109,7 @@ function climber(){return `<g id="cl">
   <circle cx="-3" cy="-8" r="1.3" fill="#222"/><circle cx="3" cy="-8" r="1.3" fill="#222"/>
   <path d="M-3 -4 Q0 -2 3 -4" stroke="#222" stroke-width="1.2" fill="none"/></g>`}
 function drawScene(){
-  const anchors=P.slice(1,STEPS).map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="none" stroke="#5F6B78" stroke-width="2.5"/>`).join('');
+  const anchors='';
   $('scene').innerHTML=`
   <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8FCBF2"/><stop offset="1" stop-color="#DDF1FF"/></linearGradient></defs>
   <rect y="-12" width="300" height="392" fill="url(#sky)"/>
@@ -120,25 +123,27 @@ function drawScene(){
   <polygon id="flag" points="150,-6 176,1 150,8" fill="#E5534B"/>
   ${anchors}
   <polyline id="rope" fill="none" stroke="#B5651D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${P[0].join(',')}"/>
-  <line id="ropeNew" stroke="#B5651D" stroke-width="3" stroke-linecap="round"/>
+  <g id="hooks"></g>
+  <path id="ropeNew" fill="none" stroke="#B5651D" stroke-width="3" stroke-linecap="round"/>
+  <g id="ropeEnd" opacity="0"><circle r="5" fill="#5F6B78"/><text id="ropeNum" x="9" y="5" font-size="16" font-weight="700" fill="#E5534B" font-family="Schul,system-ui">0</text></g>
   <g id="clPos" transform="translate(${P[0][0]} ${P[0][1]-12})">${climber()}</g>`;
   $('scene').setAttribute('viewBox','0 -12 300 392');
 }
 
 // ---------- Aufgaben ----------
-let step=0,task=null,busy=false,firstTry=0,wrong=0,seen=new Set();
+let step=0,task=null,busy=false,firstTry=0,wrong=0,seen=new Set(),tasks=[];
 function makeTask(){
   for(let t=0;t<50;t++){
     let a,b,op;
-    if(step<5||Math.random()<.5){op='+';a=1+rand(9);b=1+rand(10-a);if(a+b>10)continue}
-    else{op='−';a=2+rand(9);b=1+rand(a-1)}
+    if(step<4||Math.random()<.5){op='+';a=1+rand(9);b=1+rand(10-a);if(a+b>10)continue}
+    else{op='−';a=3+rand(8);b=1+rand(a-2)}
     const key=a+op+b;if(seen.has(key))continue;seen.add(key);
     return{a,b,op,r:op==='+'?a+b:a-b}}
   return{a:2,b:3,op:'+',r:5}}
 function options(r){const c=shuffle([-2,-1,1,2].map(d=>r+d).filter(x=>x>=0&&x<=10)).slice(0,2);return shuffle([r,...c])}
 const spoken=t=>`${t.a} ${t.op==='+'?'plus':'minus'} ${t.b}`;
 function newTask(){
-  task=makeTask();wrong=0;busy=false;
+  task=tasks[step];wrong=0;busy=false;
   $('task').classList.remove('ok');$('task').innerHTML=`${task.a} ${task.op} ${task.b} = <span class="q">?</span>`;
   $('answers').innerHTML=options(task.r).map(n=>`<button class="ans" data-n="${n}">${n}</button>`).join('');
   $('answers').querySelectorAll('.ans').forEach(b=>b.addEventListener('click',()=>answer(+b.dataset.n,b)));
@@ -155,18 +160,23 @@ function answer(n,btn){
   climb(()=>{step++;$('lvl').textContent=`${step} / ${STEPS}`;if(step<STEPS)setTimeout(newTask,500);else summit()});
 }
 function climb(done){
-  const [x0,y0]=P[step],[x1,y1]=P[step+1],rn=$('ropeNew');
-  rn.setAttribute('x1',x0);rn.setAttribute('y1',y0);
+  const [x0,y0]=P[step],[x1,y1]=P[step+1],rn=$('ropeNew'),re=$('ropeEnd'),hx=x0+8,hy=y0-26;
+  $('ropeNum').textContent=task.r;re.setAttribute('opacity',1);
   let t0=null;
-  function rope(now){if(!t0)t0=now;const q=Math.min(1,(now-t0)/450);       // Seil wächst nach oben
-    rn.setAttribute('x2',x0+(x1-x0)*q);rn.setAttribute('y2',y0+(y1-y0)*q);
-    if(q<1)requestAnimationFrame(rope);else{hoch(step);t0=null;requestAnimationFrame(move)}}
-  function move(now){if(!t0)t0=now;const q=Math.min(1,(now-t0)/700),e=q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2;  // Kletterer zieht sich hoch
+  function toss(now){if(!t0)t0=now;const q=Math.min(1,(now-t0)/750);          // Seilende fliegt im Bogen zum nächsten Punkt
+    const ex=hx+(x1-hx)*q,ey=hy+(y1-hy)*q-55*Math.sin(Math.PI*q);
+    rn.setAttribute('d',`M ${hx} ${hy} Q ${(hx+ex)/2+20} ${(hy+ey)/2+25*(1-q)} ${ex} ${ey}`);
+    re.setAttribute('transform',`translate(${ex} ${ey})`);
+    if(q<1)requestAnimationFrame(toss);
+    else{klack();$('hooks').insertAdjacentHTML('beforeend',`<circle cx="${x1}" cy="${y1}" r="4.5" fill="none" stroke="#5F6B78" stroke-width="2.5"/>`);
+      re.setAttribute('opacity',0);rn.setAttribute('d',`M ${hx} ${hy} L ${x1} ${y1}`);hoch(step);t0=null;setTimeout(()=>requestAnimationFrame(move),250)}}
+  function move(now){if(!t0)t0=now;const q=Math.min(1,(now-t0)/800),e=q<.5?2*q*q:1-Math.pow(-2*q+2,2)/2;   // Kletterer zieht sich hoch
     const x=x0+(x1-x0)*e,y=y0+(y1-y0)*e-12+Math.sin(q*Math.PI*3)*-2;
     $('clPos').setAttribute('transform',`translate(${x} ${y})`);
+    rn.setAttribute('d',`M ${x+8} ${y-14} L ${x1} ${y1}`);
     if(q<1)requestAnimationFrame(move);
-    else{const r=$('rope');r.setAttribute('points',P.slice(0,step+2).map(p=>p.join(',')).join(' '));rn.setAttribute('x2',x0);rn.setAttribute('y2',y0);done()}}
-  requestAnimationFrame(rope);
+    else{$('rope').setAttribute('points',P.slice(0,step+2).map(p=>p.join(',')).join(' '));rn.setAttribute('d','');done()}}
+  requestAnimationFrame(toss);
 }
 function summit(){
   $('task').style.display='none';$('answers').style.display='none';
@@ -181,7 +191,7 @@ function summit(){
   $('endBox').classList.add('on');
 }
 function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
-  step=0;firstTry=0;seen=new Set();$('endBox').classList.remove('on');$('task').style.display='';$('answers').style.display='';
+  step=0;firstTry=0;seen=new Set();tasks=[];for(step=0;step<STEPS;step++)tasks.push(makeTask());step=0;buildPath();$('endBox').classList.remove('on');$('task').style.display='';$('answers').style.display='';
   show('game');drawScene();newTask()}
 $('go').addEventListener('click',startGame);
 $('again').addEventListener('click',startGame);
