@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Silben klatschen">
+<title>Silben klatschen</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  :root{--ink:#3B2F2A}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;color:var(--ink);background:#FFF6E5;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#9B6BFF;box-shadow:0 5px 0 #6E45C9}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #6E45C9}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:64px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .home,.ear{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #E3D3B8}
+  #strip{display:flex;gap:3px;background:#fff;border-radius:16px;padding:6px 8px;box-shadow:0 2px 0 #E3D3B8}
+  #strip span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:50%;background:#F3E9D8}
+  #strip span.cur{box-shadow:0 0 0 3px #FFD23F}
+  #pic{font-size:min(34vw,150px);line-height:1;margin-top:14px;background:#fff;border-radius:34px;padding:16px 26px;box-shadow:0 5px 0 #E3D3B8}
+  #pic.pop{animation:pop .4s}
+  @keyframes pop{from{transform:scale(.4)}to{transform:none}}
+  #word{display:flex;gap:4px;justify-content:center;align-items:flex-end;min-height:110px;margin-top:10px}
+  .syl{display:flex;flex-direction:column;align-items:center;font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;
+    font-size:min(13vw,58px);line-height:1.1;transition:transform .15s}
+  .syl.lit{transform:scale(1.2) translateY(-4px)}
+  .syl svg{width:100%;height:20px;min-width:44px}
+  .syl.ghost span{visibility:hidden}
+  #claps{display:flex;gap:8px;min-height:40px;font-size:30px;margin:4px 0}
+  #claps span{animation:pop .25s}
+  #msg{font-size:22px;font-weight:800;min-height:30px;text-align:center}
+  #clapWrap{flex:1;display:flex;align-items:center;justify-content:center}
+  #clap{width:min(48vw,190px);height:min(48vw,190px);border:0;border-radius:50%;background:#FFD23F;box-shadow:0 8px 0 #C9A21E;font-size:min(24vw,96px);touch-action:none}
+  #clap.hit{transform:translateY(5px) scale(.95);box-shadow:0 3px 0 #C9A21E}
+  #clap.wait{opacity:.5}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#9A8F85}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🍌👏</div>
+  <h1>Silben klatschen</h1>
+  <p>Hör das Wort und<br>klatsche jede Silbe!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div id="strip"></div>
+    <button class="ear" id="earBtn" aria-label="Nochmal hören">🔊</button>
+  </header>
+  <div id="pic"></div>
+  <div id="word"></div>
+  <div id="claps"></div>
+  <div id="msg"></div>
+  <div id="clapWrap"><button id="clap" class="wait" aria-label="Klatschen">👏</button></div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big">👏🎉</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+const mk=(t,rate=.85)=>{const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=rate;u.pitch=1.1;return u};
+let sayT=null;
+function say(t,delay=250){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);const u=mk(t);window._u=u;sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f,dur,vol=.25,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function clapSnd(){if(!ac)return;const t=ac.currentTime;[0,.012,.024].forEach(dt=>{const d=.06,b=ac.createBuffer(1,ac.sampleRate*d,ac.sampleRate),x=b.getChannelData(0);
+  for(let i=0;i<x.length;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/x.length,4);const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=b;f.type='bandpass';f.frequency.value=1400;f.Q.value=.8;g.gain.value=.9;s.connect(f).connect(g).connect(ac.destination);s.start(t+dt)})}
+const ok=()=>{tone(659,.25,.25);tone(880,.35,.25,.12)};
+const oops=()=>{tone(220,.3,.25);tone(196,.4,.25,.15)};
+
+// ---------- Wörter (in Silben) ----------
+const WORDS=[
+ ['🐶','Hund'],['🌳','Baum'],['🏠','Haus'],['🌙','Mond'],['🐟','Fisch'],['🐮','Kuh'],['🍦','Eis'],['🍞','Brot'],['🚂','Zug'],['🏀','Ball'],
+ ['🐰','Ha-se'],['👃','Na-se'],['🛋️','So-fa'],['🌹','Ro-se'],['🐵','Af-fe'],['🐱','Kat-ze'],['🍐','Bir-ne'],['☕','Tas-se'],['🦆','En-te'],['🚗','Au-to'],['🍎','Ap-fel'],['☀️','Son-ne'],
+ ['🍌','Ba-na-ne'],['🍅','To-ma-te'],['🦒','Gi-raf-fe'],['🥕','Ka-rot-te'],['🐘','E-le-fant'],['🐧','Pin-gu-in'],['🦋','Schmet-ter-ling'],['🚀','Ra-ke-te'],['🍉','Me-lo-ne'],['🐢','Schild-krö-te'],['🥔','Kar-tof-fel'],
+ ['🌈','Re-gen-bo-gen'],['🛁','Ba-de-wan-ne'],['🚑','Kran-ken-wa-gen'],['🔦','Ta-schen-lam-pe']
+].map(([e,w])=>({e,syl:w.split('-'),w:w.replace(/-/g,'')}));
+const PLAN=[1,2,2,1,3,2,3,4,3,4],ROUNDS=PLAN.length,COL=['#E5534B','#2E7CC4'];
+let list=[],r=0,cur=null,claps=0,tries=0,turn=false,gid=0,res=[],firstTry=0,solved=0,clapT=null;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+
+function drawStrip(){$('strip').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="${i===r&&res.length===i?'cur':''}">${res[i]||''}</span>`).join('')}
+function pick(){const used=new Set();list=PLAN.map(n=>{const p=shuffle(WORDS.filter(w=>w.syl.length===n&&!used.has(w.w)));used.add(p[0].w);return p[0]})}
+function drawWord(ghost){
+  $('word').innerHTML=cur.syl.map((s,i)=>`<div class="syl${ghost?' ghost':''}" style="color:${COL[i%2]}"><span>${i===0?s:s.toLowerCase()}</span>
+    <svg viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M6 4 Q50 26 94 4" fill="none" stroke="${COL[i%2]}" stroke-width="5" stroke-linecap="round"/></svg></div>`).join('')}
+// Silben langsam vorsprechen, jede Silbe leuchtet mit
+function speakSyl(done){
+  if('speechSynthesis' in window)speechSynthesis.cancel();
+  const els=[...$('word').children];let i=0;
+  const step=()=>{els.forEach(e=>e.classList.remove('lit'));
+    if(i>=cur.syl.length){later(()=>{if('speechSynthesis' in window){const u=mk(cur.w);window._u=u;speechSynthesis.speak(u)}done&&later(done,1100)},250);return}
+    els[i]&&els[i].classList.add('lit');clapSnd();
+    if('speechSynthesis' in window){const u=mk(cur.syl[i].toLowerCase(),.7);window._u=u;speechSynthesis.speak(u)}
+    i++;later(step,650)};
+  later(step,300);
+}
+function newWord(){
+  cur=list[r];tries=0;drawStrip();$('pic').textContent=cur.e;$('pic').classList.remove('pop');void $('pic').offsetWidth;$('pic').classList.add('pop');
+  $('word').innerHTML='';listen();
+}
+function listen(){claps=0;$('claps').innerHTML='';$('msg').textContent='Hör zu … 👂';turn=false;$('clap').classList.add('wait');
+  say(cur.w,400);later(()=>{turn=true;$('clap').classList.remove('wait');$('msg').textContent='Klatsch die Silben! 👏'},1600)}
+function clap(){
+  audio();clapSnd();const b=$('clap');b.classList.add('hit');setTimeout(()=>b.classList.remove('hit'),90);
+  if(!turn)return;claps++;$('claps').insertAdjacentHTML('beforeend','<span>👏</span>');
+  clearTimeout(clapT);clapT=setTimeout(()=>later(check,0),1400);       // nach kurzer Pause auswerten
+}
+$('clap').addEventListener('pointerdown',e=>{e.preventDefault();clap()});
+$('earBtn').addEventListener('click',()=>{audio();if(cur)say(cur.w,100)});
+function check(){
+  turn=false;$('clap').classList.add('wait');const n=cur.syl.length;
+  if(claps===n){ok();if(tries===0)firstTry++;solved++;res.push(tries===0?'⭐':'✔️');drawStrip();
+    $('msg').textContent=`${n} ${n===1?'Silbe':'Silben'}! ${['Toll!','Super!','Genau!','Prima!'][rand(4)]}`;drawWord(false);
+    speakSyl(()=>{r++;if(r<ROUNDS)later(newWord,600);else later(finish,600)});return}
+  oops();tries++;
+  if(tries<2){$('msg').textContent=claps<n?'Das waren zu wenige. Hör so:':'Das waren zu viele. Hör so:';drawWord(true);
+    speakSyl(()=>{$('word').innerHTML='';listen()})}
+  else{res.push('·');drawStrip();$('msg').textContent=`${n} ${n===1?'Silbe':'Silben'} – so geht's:`;drawWord(false);
+    speakSyl(()=>{r++;if(r<ROUNDS)later(newWord,600);else later(finish,600)})}
+}
+function finish(){
+  const st=firstTry>=8?3:solved>=6?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${firstTry} von ${ROUNDS} beim ersten Versuch · ${solved} geschafft`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');clapSnd()},400+i*500)});
+  later(()=>say(st===3?'Super! Du bist ein Silben-Profi!':st===2?'Toll geklatscht! Hör beim nächsten Mal ganz genau hin!':'Gut gemacht! Sprich die Wörter langsam mit!'),1900);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;r=0;res=[];firstTry=0;solved=0;pick();show('game');drawStrip();$('pic').textContent='👏';$('word').innerHTML='';$('claps').innerHTML='';
+  $('msg').textContent='';say('Hör das Wort und klatsche jede Silbe!');later(newWord,2800)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;turn=false;clearTimeout(clapT);if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
