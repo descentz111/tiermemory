@@ -15,6 +15,8 @@
     --bg:#FFF6E5; --ink:#3B2F2A; --accent:#FF8A3D; --green:#5BB87A; --back1:#4F8EDC; --back2:#3A74C0;
     --s:80px;
   }
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  .letter,.letter i,.word,.li div,.badge{font-family:Schul,-apple-system,system-ui,sans-serif!important;font-weight:700}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
     font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
@@ -255,7 +257,7 @@ const ANIMALS=[
   <polygon points="45,50 55,50 50,59" fill="#F9A825"/>
   <path d="M38 92 l3 -5 l3 5 M56 92 l3 -5 l3 5" fill="none" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>`}
 ];
-const sch=t=>String(t).replace(/a/g,'\u0251'); // Schul-a (einstöckig)
+const sch=t=>String(t); // Schul-a (einstöckig)
 const svgOf=a=>`<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${a.svg}</svg>`;
 const L=a=>a.n[0].toUpperCase();
 
