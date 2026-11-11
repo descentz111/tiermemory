@@ -65,6 +65,25 @@
   .sym.let{font-weight:900;color:var(--lc);font-family:-apple-system,"SF Pro Rounded",system-ui,sans-serif;letter-spacing:.02em}
   .gk{color:#E5534B}
   .gk i,i.kl{font-style:normal;font-size:.78em;color:#2E7CC4;margin-left:.04em}
+  #strip{display:flex;gap:3px;background:#fff;border-radius:16px;padding:6px 8px;box-shadow:0 2px 0 #EBDCC2}
+  #strip span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:17px;border-radius:50%;background:#F3E9D8}
+  #strip span.cur{box-shadow:0 0 0 3px #FFD23F}
+  .sym.off{opacity:.25;filter:grayscale(1);pointer-events:none}
+  .card.locked{pointer-events:none}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #gift{position:relative;font-size:120px;line-height:1;margin-top:10px}
+  #gift.wob{animation:wob 1s infinite}
+  @keyframes wob{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+  #lock{position:absolute;right:-14px;bottom:-6px;font-size:52px}
+  #giftOpen{display:none;flex-direction:column;align-items:center;font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700}
+  #giftOpen.on{display:flex;animation:cardIn .5s}
+  #giftOpen .gl{font-size:130px;line-height:1.1}
+  #giftOpen .ge{font-size:90px;line-height:1.1}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #again:active{transform:translateY(4px);box-shadow:0 2px 0 #3F9560}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#9A8F85}
   #intro{justify-content:center;gap:10px;text-align:center}
   #inLet{font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;font-size:150px;line-height:1.1;color:#FF8A3D}
   #inEmo{font-size:110px;line-height:1.1}
@@ -96,8 +115,8 @@
 <section id="game" class="screen">
   <header>
     <button class="home" id="homeBtn">🏠</button>
-    <div class="pill" id="score">Du 0 : 0 Max</div>
-    <div class="pill" id="round">1 / 10</div>
+    <div id="strip"></div>
+    <div style="width:46px"></div>
   </header>
   <div id="area">
     <div class="card" id="cardA"></div>
@@ -108,10 +127,11 @@
 </section>
 
 <section id="end" class="screen">
-  <div class="big" id="endBig">🏆</div>
-  <h2 id="endTitle"></h2>
-  <p id="endInfo"></p>
-  <button class="btn" id="again">Nochmal</button>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <div id="gift">🎁<b id="lock">🔒</b></div>
+  <div id="giftOpen"></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
 </section>
 
 <div id="pop"><div class="pbox"><div class="prow"><div id="pEmo"></div><div id="pLet"></div></div><div id="pWord"></div></div></div>
@@ -168,7 +188,8 @@ const LCOL=['#E5534B','#2E7CC4','#3F9560','#9B6BFF','#E0661E','#C2185B'];
 // Fortschritt: neuer Buchstabe, wenn ein Durchgang gut lief (mind. 7 von 10 selbst gefunden, höchstens 4 Fehltipper)
 function getN(){try{return Math.max(3,+localStorage.getItem('bbLetters')||3)}catch(e){return 3}}
 function setN(n){try{localStorage.setItem('bbLetters',n)}catch(e){}}
-let learned=[],errTotal=0,sharedL='',gid=0;
+let learned=[],errTotal=0,sharedL='',gid=0,res=[],starCards=0;
+function drawStrip(){$('strip').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="${i===round&&res.length===i?'cur':''}">${res[i]||''}</span>`).join('')}
 function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
 const SPOTS={
  3:[[.5,.27],[.29,.66],[.71,.66]],
@@ -207,7 +228,7 @@ function newRound(){
   requestAnimationFrame(()=>{
     makeCard($('cardA'),shuffle(top).map(l=>({txt:pair(l),key:'L:'+l,let:1})));
     makeCard($('cardB'),animals.map(a=>({txt:a[0],key:'A:'+a[0]})))});
-  $('round').textContent=`${round+1} / ${ROUNDS}`;$('score').textContent=`Du ${me} : ${mx} Max`;
+  drawStrip();
   $('msg').textContent=round===0?'Welches Tier passt zu einem Buchstaben?':'';
   if(nl===1&&round>0)say(SPOKEN[sharedL]||sharedL,500);   // ein Buchstabe: Laut vorsprechen
   if(round===0)say(nl===1?`Oben ist ein Buchstabe. Welches Tier fängt mit ${SPOKEN[sharedL]||sharedL} an?`:'Oben sind Buchstaben, unten Tiere. Welches Tier fängt mit einem Buchstaben von oben an?');
@@ -238,25 +259,34 @@ function mark(cls){document.querySelectorAll(`.sym[data-k="A:${shared[0]}"],.sym
 function tap(it,el){
   if(resolved)return;audio();
   if(it.key!=='A:'+shared[0]&&it.key!=='L:'+sharedL){bonk();el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');wrong++;errTotal++;
+    later(()=>el.classList.add('off'),350);['cardA','cardB'].forEach(c=>$(c).classList.add('locked'));later(()=>['cardA','cardB'].forEach(c=>$(c).classList.remove('locked')),1500);
     if(wrong===2){$('msg').textContent='Hör mal …';say('Welches Tier fängt mit '+(SPOKEN[sharedL]||sharedL)+' an?',100);
       document.querySelector(`#cardA .sym[data-k="L:${sharedL}"]`).classList.add('hint')}
     return}
-  resolved=true;me++;ding();mark('ring');$('msg').textContent='Super! 🎉';
-  $('score').textContent=`Du ${me} : ${mx} Max`;later(reveal,900);later(next,4400)}
+  resolved=true;me++;if(wrong===0)starCards++;res.push(wrong===0?'⭐':'✔️');drawStrip();ding();mark('ring');$('msg').textContent='Super! 🎉';
+  later(reveal,900);later(next,4400)}
 function maxWins(){
-  resolved=true;mx++;neigh();mark('maxring');$('maxFace').classList.remove('yay');void $('maxFace').offsetWidth;$('maxFace').classList.add('yay');
+  resolved=true;mx++;res.push('🐴');drawStrip();neigh();mark('maxring');$('maxFace').classList.remove('yay');void $('maxFace').offsetWidth;$('maxFace').classList.add('yay');
   $('msg').textContent='Max war schneller!';say('Max war schneller!',200);
-  $('score').textContent=`Du ${me} : ${mx} Max`;later(reveal,900);later(next,4400)}
-function next(){closePop();round++;if(round<ROUNDS)newRound();else finish()}
+  later(reveal,900);later(next,4400)}
+function next(){closePop();['cardA','cardB'].forEach(c=>$(c).classList.remove('locked'));round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
-  const good=me>=7&&errTotal<=4,before=getN();let info=`Du: ${me} Karten – Max: ${mx} Karten · Fehltipper: ${errTotal}`,sp;
-  if(good&&before<ORDER.length){setN(before+1);const L=ORDER[before];
-    $('endBig').textContent='🌟';$('endTitle').innerHTML=`Neuer Buchstabe: ${pair(L)}`;
-    sp=`Super gespielt! Du bekommst einen neuen Buchstaben: ${SPOKEN[L]||L}.`}
-  else{const win=me>mx;$('endBig').textContent=win?'🏆':'🐴';$('endTitle').textContent=win?'Du hast gewonnen!':'Max hat gewonnen!';
-    sp=good?'Toll! Du kennst schon alle Buchstaben!':'Gut gemacht! Mit 7 Karten und wenig Fehlern gibt es einen neuen Buchstaben.';
-    if(!good)info+=' · Für einen neuen Buchstaben: 7 Karten und höchstens 4 Fehler'}
-  $('endInfo').textContent=info;show('end');jubel();say(sp);
+  const n3=starCards>=7,stars=n3?3:(starCards>=4||me>=7)?2:1,before=getN(),canNew=n3&&before<ORDER.length;
+  show('end');$('giftOpen').classList.remove('on');$('gift').style.display='';
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('lock').style.display=canNew?'none':'';$('gift').classList.toggle('wob',canNew);
+  $('endInfo').textContent=`Eltern: ${starCards}× beim ersten Tipp · ${me} gefunden · Max ${mx} · Fehltipper ${errTotal}`;
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<stars)later(()=>{x.classList.add('on');tone(660+i*220,660+i*220,.2,'sine',.3)},500+i*600)});
+  later(()=>{jubel();
+    say(canNew?'Drei Sterne! Super! Tippe auf das Geschenk!':
+        stars===3?'Drei Sterne! Du kennst schon alle Buchstaben!':
+        stars===2?'Zwei Sterne! Toll! Schau genau und tippe ruhig. Dann gibt es drei Sterne und ein Geschenk.':
+                  'Ein Stern! Gut gemacht! Schau genau und tippe ruhig. Dann gibt es mehr Sterne.')},500+stars*600);
+  $('gift').onclick=()=>{audio();
+    if(!canNew){bonk();say('Mit drei Sternen geht das Geschenk auf.');return}
+    if(getN()!==before)return;setN(before+1);const L=ORDER[before],a=ANIM[L][0];
+    $('gift').style.display='none';$('giftOpen').innerHTML=`<div class="gl">${pair(L)}</div><div class="ge">${a[0]}</div>`;
+    $('giftOpen').classList.add('on');jubel();later(()=>sayLetterThenName(a[1]),600)};
 }
 function showStart(){
   const n=getN();learned=ORDER.slice(0,n);
@@ -282,7 +312,7 @@ function endIntro(){try{localStorage.setItem('bbIntro',getN())}catch(e){}
   clearTimeout(seqT);if('speechSynthesis' in window)speechSynthesis.cancel();beginGame()}
 $('intro').addEventListener('click',endIntro);
 function beginGame(){
-  gid++;learned=ORDER.slice(0,getN());errTotal=0;round=0;me=0;mx=0;show('game');newRound()}
+  gid++;learned=ORDER.slice(0,getN());errTotal=0;res=[];starCards=0;round=0;me=0;mx=0;show('game');newRound()}
 $('go').addEventListener('click',startGame);
 $('again').addEventListener('click',showStart);
 $('homeBtn').addEventListener('click',()=>{gid++;clearTimeout(seqT);resolved=true;closePop();if('speechSynthesis' in window)speechSynthesis.cancel();showStart()});
