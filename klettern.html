@@ -190,7 +190,7 @@ function climb(done){
 }
 function summit(){
   $('task').style.display='none';$('answers').style.display='none';
-  jubel();jodel(.9);say('Juhu! Du bist auf dem Gipfel! Super gemacht!',3600);
+  jodel(.4);say('Juhu! Du bist auf dem Gipfel!',3100);
   const cl=$('cl');cl.innerHTML=cl.innerHTML.replace('x2="-13" y2="-14"','x2="-15" y2="-22"').replace('x2="13" y2="-14"','x2="15" y2="-22"');
   let t0=null;const flag=$('flag');
   (function wave(now){if(!t0)t0=now;const t=(now-t0)/1000;
