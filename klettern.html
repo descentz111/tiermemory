@@ -89,6 +89,16 @@ function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.cur
 const bonk=()=>tone(180,70,.2,'triangle',.45);
 const klack=()=>{tone(1200,800,.05,'square',.15);tone(900,600,.05,'square',.12,.08)};
 const hoch=k=>tone(400+k*60,600+k*60,.25,'sine',.25);
+// Jodler: schnelle Sprünge zwischen tiefer und hoher Stimme ("Jo-lo-di-ri-di-ö")
+function jodel(delay=0){if(!ac)return;const t0=ac.currentTime+delay,o=ac.createOscillator(),v=ac.createOscillator(),vg=ac.createGain(),
+  f=ac.createBiquadFilter(),g=ac.createGain();
+  o.type='sawtooth';f.type='lowpass';f.frequency.value=1800;f.Q.value=4;v.frequency.value=6;vg.gain.value=7;v.connect(vg).connect(o.frequency);
+  const N=[[247,.16],[494,.16],[392,.16],[587,.22],[494,.16],[740,.34],[587,.16],[494,.16],[392,.16],[494,.5]];
+  let t=t0;g.gain.setValueAtTime(.001,t);
+  N.forEach(([fr,d],i)=>{o.frequency.setTargetAtTime(fr,t,.015);f.frequency.setTargetAtTime(fr>450?2600:1300,t,.02);
+    g.gain.setTargetAtTime(.22,t,.01);g.gain.setTargetAtTime(.07,t+d-.04,.01);t+=d});
+  g.gain.setTargetAtTime(.001,t,.08);
+  o.connect(f).connect(g).connect(ac.destination);o.start(t0);v.start(t0);o.stop(t+.5);v.stop(t+.5)}
 const jubel=()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,f,.28,'sine',.3,i*.13));
 
 // ---------- Berg ----------
@@ -180,7 +190,7 @@ function climb(done){
 }
 function summit(){
   $('task').style.display='none';$('answers').style.display='none';
-  jubel();say('Du bist auf dem Gipfel! Super gemacht!',600);
+  jubel();jodel(.9);say('Juhu! Du bist auf dem Gipfel! Super gemacht!',3600);
   const cl=$('cl');cl.innerHTML=cl.innerHTML.replace('x2="-13" y2="-14"','x2="-15" y2="-22"').replace('x2="13" y2="-14"','x2="15" y2="-22"');
   let t0=null;const flag=$('flag');
   (function wave(now){if(!t0)t0=now;const t=(now-t0)/1000;
