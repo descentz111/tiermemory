@@ -9,6 +9,8 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
   :root{--bg:#FFF6E5;--ink:#3B2F2A;--card:300px}
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  .sym.let,.lb,#pLet,#pLet i,#pWord,#endTitle{font-family:Schul,-apple-system,system-ui,sans-serif!important;font-weight:700}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;touch-action:manipulation;
     font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
@@ -120,8 +122,8 @@ function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speech
   const L=name[0].toUpperCase(),u1=mk(SPOKEN[L]||L);window._u=u1;let done=false;
   const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},700)};
   u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},250)}
-const disp=l=>(l==='I'?'<span style="font-family:Verdana,Georgia,serif">I</span>':l);
-const sch=t=>String(t).replace(/a/g,'\u0251'); // Schul-a (einstöckig)
+const disp=l=>l;
+const sch=t=>String(t); // Schul-a (einstöckig)
 let ac=null;
 function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
 function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
@@ -146,7 +148,7 @@ const ANIM={M:[['🐭','Maus'],['🐞','Marienkäfer']],A:[['🐵','Affe'],['�
  W:[['🐳','Wal'],['🐺','Wolf']],D:[['🐬','Delfin'],['🦕','Dino']],K:[['🐱','Katze'],['🐮','Kuh'],['🐨','Koala'],['🐊','Krokodil'],['🐫','Kamel'],['🦘','Känguru']],
  B:[['🐻','Bär'],['🐝','Biene']],P:[['🐼','Panda'],['🐧','Pinguin'],['🦜','Papagei']],G:[['🦒','Giraffe'],['🦍','Gorilla']],Z:[['🦓','Zebra'],['🐐','Ziege']]};
 const LCOL=['#E5534B','#2E7CC4','#3F9560','#9B6BFF','#E0661E','#C2185B'];
-// Fortschritt: neuer Buchstabe, wenn ein Durchgang gut lief (mind. 8 von 10 selbst gefunden, höchstens 3 Fehltipper)
+// Fortschritt: neuer Buchstabe, wenn ein Durchgang gut lief (mind. 7 von 10 selbst gefunden, höchstens 4 Fehltipper)
 function getN(){try{return Math.max(3,+localStorage.getItem('bbLetters')||3)}catch(e){return 3}}
 function setN(n){try{localStorage.setItem('bbLetters',n)}catch(e){}}
 let learned=[],errTotal=0,sharedL='',gid=0;
@@ -157,8 +159,10 @@ const SPOTS={
  6:[[.5,.5],[.5,.18],[.8,.4],[.69,.77],[.31,.77],[.2,.4]]
 };
 const ROUNDS=10;
-const perCard=r=>r<3?3:r<6?4:6;
-const maxTime=n=>({3:8000,4:10000,6:14000}[n])+rand(2500);   // so lange braucht Max (ms)
+const easy=()=>learned.length<=5;                       // Anfang: wenige Buchstaben -> leichte Karten
+const perCard=r=>easy()?(r<3?2:r<6?3:4):(r<3?3:r<6?4:6);   // Tiere auf der unteren Karte
+const perTop=(r,n)=>easy()?(r<3?1:r<6?2:3):n;              // Buchstaben auf der oberen Karte
+const maxTime=n=>(easy()?{2:13000,3:13000,4:14000}[n]:{3:9000,4:11000,6:14000}[n])+rand(2500);   // so lange braucht Max (ms)
 
 let round=0,me=0,mx=0,shared=null,resolved=true,t0=0,limit=0,wrong=0;
 
@@ -175,7 +179,7 @@ function makeCard(el,items){
 const SPOTS1={1:[[.5,.5]],2:[[.3,.5],[.7,.5]],5:[[.5,.5],[.5,.2],[.8,.45],[.65,.78],[.3,.62]]};
 Object.assign(SPOTS,SPOTS1);
 function newRound(){
-  const n=perCard(round),nl=Math.min(n,learned.length),newest=learned[learned.length-1];
+  const n=perCard(round),nl=Math.min(perTop(round,n),learned.length),newest=learned[learned.length-1];
   sharedL=(learned.length>3&&Math.random()<.4)?newest:learned[rand(learned.length)];
   const top=[sharedL,...shuffle(learned.filter(l=>l!==sharedL)).slice(0,nl-1)];
   const al=ANIM[sharedL];shared=al[rand(al.length)];
@@ -188,6 +192,8 @@ function newRound(){
     makeCard($('cardB'),animals.map(a=>({txt:a[0],key:'A:'+a[0]})))});
   $('round').textContent=`${round+1} / ${ROUNDS}`;$('score').textContent=`Du ${me} : ${mx} Max`;
   $('msg').textContent=round===0?'Welches Tier passt zu einem Buchstaben?':'';
+  if(nl===1&&round>0)say(SPOKEN[sharedL]||sharedL,500);   // ein Buchstabe: Laut vorsprechen
+  if(round===0)say(nl===1?`Oben ist ein Buchstabe. Welches Tier fängt mit ${SPOKEN[sharedL]||sharedL} an?`:'Oben sind Buchstaben, unten Tiere. Welches Tier fängt mit einem Buchstaben von oben an?');
   wrong=0;resolved=false;limit=maxTime(n);t0=performance.now()+(round===0?7000:0);$('barIn').style.width='0';
   requestAnimationFrame(tick);
 }
@@ -226,13 +232,13 @@ function maxWins(){
   $('score').textContent=`Du ${me} : ${mx} Max`;later(reveal,900);later(next,4400)}
 function next(){closePop();round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
-  const good=me>=8&&errTotal<=3,before=getN();let info=`Du: ${me} Karten – Max: ${mx} Karten · Fehltipper: ${errTotal}`,sp;
+  const good=me>=7&&errTotal<=4,before=getN();let info=`Du: ${me} Karten – Max: ${mx} Karten · Fehltipper: ${errTotal}`,sp;
   if(good&&before<ORDER.length){setN(before+1);const L=ORDER[before];
     $('endBig').textContent='🌟';$('endTitle').innerHTML=`Neuer Buchstabe: ${disp(L)} ${sch(L.toLowerCase())}`;
     sp=`Super gespielt! Du bekommst einen neuen Buchstaben: ${SPOKEN[L]||L}.`}
   else{const win=me>mx;$('endBig').textContent=win?'🏆':'🐴';$('endTitle').textContent=win?'Du hast gewonnen!':'Max hat gewonnen!';
-    sp=good?'Toll! Du kennst schon alle Buchstaben!':'Gut gemacht! Mit 8 Karten und wenig Fehlern gibt es einen neuen Buchstaben.';
-    if(!good)info+=' · Für einen neuen Buchstaben: 8 Karten und höchstens 3 Fehler'}
+    sp=good?'Toll! Du kennst schon alle Buchstaben!':'Gut gemacht! Mit 7 Karten und wenig Fehlern gibt es einen neuen Buchstaben.';
+    if(!good)info+=' · Für einen neuen Buchstaben: 7 Karten und höchstens 4 Fehler'}
   $('endInfo').textContent=info;show('end');jubel();say(sp);
 }
 function showStart(){
@@ -242,7 +248,7 @@ function showStart(){
   $('progress').textContent=`Du kennst ${n} von ${ORDER.length} Buchstaben`;show('start');
 }
 function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
-  gid++;learned=ORDER.slice(0,getN());errTotal=0;round=0;me=0;mx=0;show('game');say('Oben sind Buchstaben, unten Tiere. Welches Tier fängt mit einem Buchstaben von oben an?');newRound()}
+  gid++;learned=ORDER.slice(0,getN());errTotal=0;round=0;me=0;mx=0;show('game');newRound()}
 $('go').addEventListener('click',startGame);
 $('again').addEventListener('click',showStart);
 $('homeBtn').addEventListener('click',()=>{gid++;clearTimeout(seqT);resolved=true;closePop();if('speechSynthesis' in window)speechSynthesis.cancel();showStart()});
