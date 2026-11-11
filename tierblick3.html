@@ -112,7 +112,7 @@ let sayT=null;
 function say(t,delay=300){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
   const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.1;window._u=u;
   sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
-const SPOKEN={A:'a',B:'bö',C:'kö',D:'dö',E:'e',F:'fff',G:'gö',H:'hö',I:'i',J:'jö',K:'kö',L:'lll',M:'mmm',N:'nö',O:'o',
+const SPOKEN={A:'a',B:'bö',C:'kö',D:'dö',E:'e',F:'fö',G:'gö',H:'hö',I:'i',J:'jö',K:'kö',L:'lö',M:'mö',N:'nö',O:'o',
   P:'pö',R:'rö',S:'ssö',T:'tö',U:'u',W:'wö',Z:'tsö'};
 let seqT=null;
 function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);clearTimeout(seqT);
@@ -120,6 +120,7 @@ function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speech
   const L=name[0].toUpperCase(),u1=mk(SPOKEN[L]||L);window._u=u1;let done=false;
   const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},700)};
   u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},250)}
+const disp=l=>(l==='I'?'<span style="font-family:Verdana,Georgia,serif">I</span>':l);
 const sch=t=>String(t).replace(/a/g,'\u0251'); // Schul-a (einstöckig)
 let ac=null;
 function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
@@ -139,16 +140,17 @@ function neigh(){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),l=
 // Buchstaben in Fibel-Reihenfolge und Tiere je Anlaut
 const ORDER=['M','A','L','I','O','S','E','R','T','N','U','H','F','W','D','K','B','P','G','Z'];
 const ANIM={M:[['🐭','Maus'],['🐞','Marienkäfer']],A:[['🐵','Affe'],['🐜','Ameise'],['🦅','Adler']],L:[['🦁','Löwe'],['🦙','Lama'],['🐆','Leopard']],
- I:[['🦔','Igel']],O:[['🐙','Oktopus'],['🦦','Otter']],S:[['🦭','Seehund'],['🦂','Skorpion']],E:[['🐘','Elefant'],['🦆','Ente'],['🫏','Esel']],
- R:[['🐀','Ratte'],['🐛','Raupe']],T:[['🐯','Tiger'],['🦃','Truthahn'],['🕊️','Taube']],N:[['🦏','Nashorn'],['🦛','Nilpferd']],U:[['🦉','Uhu']],
- H:[['🐰','Hase'],['🐶','Hund'],['🐔','Huhn'],['🦈','Hai'],['🐹','Hamster']],F:[['🦊','Fuchs'],['🐸','Frosch'],['🐠','Fisch'],['🦇','Fledermaus'],['🦩','Flamingo']],
- W:[['🐳','Wal'],['🐺','Wolf'],['🪱','Wurm']],D:[['🐬','Delfin'],['🦕','Dino'],['🦡','Dachs']],K:[['🐱','Katze'],['🐮','Kuh'],['🐨','Koala'],['🐊','Krokodil'],['🐫','Kamel'],['🦘','Känguru']],
- B:[['🐻','Bär'],['🐝','Biene'],['🦫','Biber']],P:[['🐼','Panda'],['🐧','Pinguin'],['🦜','Papagei']],G:[['🦒','Giraffe'],['🦍','Gorilla']],Z:[['🦓','Zebra'],['🐐','Ziege']]};
+ I:[['🦔','Igel']],O:[['🐙','Oktopus']],S:[['🦭','Seehund']],E:[['🐘','Elefant'],['🦆','Ente']],
+ R:[['🐛','Raupe']],T:[['🐯','Tiger'],['🕊️','Taube']],N:[['🦏','Nashorn'],['🦛','Nilpferd']],U:[['🦉','Uhu']],
+ H:[['🐰','Hase'],['🐶','Hund'],['🐔','Huhn'],['🦈','Hai']],F:[['🦊','Fuchs'],['🐸','Frosch'],['🦇','Fledermaus'],['🦩','Flamingo']],
+ W:[['🐳','Wal'],['🐺','Wolf']],D:[['🐬','Delfin'],['🦕','Dino']],K:[['🐱','Katze'],['🐮','Kuh'],['🐨','Koala'],['🐊','Krokodil'],['🐫','Kamel'],['🦘','Känguru']],
+ B:[['🐻','Bär'],['🐝','Biene']],P:[['🐼','Panda'],['🐧','Pinguin'],['🦜','Papagei']],G:[['🦒','Giraffe'],['🦍','Gorilla']],Z:[['🦓','Zebra'],['🐐','Ziege']]};
 const LCOL=['#E5534B','#2E7CC4','#3F9560','#9B6BFF','#E0661E','#C2185B'];
 // Fortschritt: neuer Buchstabe, wenn ein Durchgang gut lief (mind. 8 von 10 selbst gefunden, höchstens 3 Fehltipper)
 function getN(){try{return Math.max(3,+localStorage.getItem('bbLetters')||3)}catch(e){return 3}}
 function setN(n){try{localStorage.setItem('bbLetters',n)}catch(e){}}
-let learned=[],errTotal=0,sharedL='';
+let learned=[],errTotal=0,sharedL='',gid=0;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
 const SPOTS={
  3:[[.5,.27],[.29,.66],[.71,.66]],
  4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]],
@@ -166,7 +168,7 @@ function makeCard(el,items){
   items.forEach((it,k)=>{
     let [x,y]=spots[k];const dx=x-.5,dy=y-.5;x=.5+dx*Math.cos(off)-dy*Math.sin(off);y=.5+dx*Math.sin(off)+dy*Math.cos(off);
     const base=n===3?.34:n===4?.3:.24,sz=C*base*(it.let?1:(.75+Math.random()*.45)),rot=it.let?rand(30)-15:rand(80)-40;
-    const d=document.createElement('div');d.className='sym'+(it.let?' let':'');d.textContent=it.txt;d.dataset.k=it.key;
+    const d=document.createElement('div');d.className='sym'+(it.let?' let':'');if(it.let)d.innerHTML=it.txt;else d.textContent=it.txt;d.dataset.k=it.key;
     d.style.cssText=`left:${x*C-sz/2}px;top:${y*C-sz/2}px;width:${sz}px;height:${sz}px;font-size:${sz*(it.let?.5:.85)}px;--t:rotate(${rot}deg);transform:rotate(${rot}deg);--lc:${LCOL[rand(LCOL.length)]}`;
     d.addEventListener('click',()=>tap(it,d));el.appendChild(d)});
 }
@@ -182,50 +184,51 @@ function newRound(){
   const size=Math.floor(Math.min(innerWidth-40,(innerHeight-230)/2,380));
   document.documentElement.style.setProperty('--card',size+'px');
   requestAnimationFrame(()=>{
-    makeCard($('cardA'),shuffle(top).map(l=>({txt:l+sch(l.toLowerCase()),key:'L:'+l,let:1})));
+    makeCard($('cardA'),shuffle(top).map(l=>({txt:disp(l)+sch(l.toLowerCase()),key:'L:'+l,let:1})));
     makeCard($('cardB'),animals.map(a=>({txt:a[0],key:'A:'+a[0]})))});
   $('round').textContent=`${round+1} / ${ROUNDS}`;$('score').textContent=`Du ${me} : ${mx} Max`;
   $('msg').textContent=round===0?'Welches Tier passt zu einem Buchstaben?':'';
-  wrong=0;resolved=false;limit=maxTime(n)+(round===0?3000:0);t0=performance.now();$('barIn').style.width='0';
+  wrong=0;resolved=false;limit=maxTime(n);t0=performance.now()+(round===0?7000:0);$('barIn').style.width='0';
   requestAnimationFrame(tick);
 }
 function tick(now){if(resolved)return;
-  const p=Math.min(1,(now-t0)/limit);$('barIn').style.width=(p*100)+'%';
+  const p=Math.max(0,Math.min(1,(now-t0)/limit));$('barIn').style.width=(p*100)+'%';
   if(p>=1){maxWins();return}requestAnimationFrame(tick)}
 
 function reveal(){
   const a=shared,L=a[1][0],src=document.querySelector(`#cardB .sym[data-k="A:${a[0]}"]`);
   $('pEmo').textContent=a[0];$('pEmo').style.visibility='hidden';
-  $('pLet').innerHTML=`${L}<i>${sch(L.toLowerCase())}</i>`;$('pLet').classList.remove('show');
-  $('pWord').innerHTML=`<b>${L}</b>${sch(a[1].slice(1))}`;$('pWord').classList.remove('show');
+  $('pLet').innerHTML=`${disp(L)}<i>${sch(L.toLowerCase())}</i>`;$('pLet').classList.remove('show');
+  $('pWord').innerHTML=`<b>${disp(L)}</b>${sch(a[1].slice(1))}`;$('pWord').classList.remove('show');
   $('pop').classList.add('on');
   const r=src.getBoundingClientRect(),t=$('pEmo').getBoundingClientRect(),f=document.createElement('div');
   f.className='fly';f.textContent=a[0];
   f.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;font-size:${r.height*.85}px;transform:${getComputedStyle(src).transform}`;
   document.body.appendChild(f);
   requestAnimationFrame(()=>requestAnimationFrame(()=>{f.style.left=t.left+'px';f.style.top=t.top+'px';f.style.width=t.width+'px';f.style.height=t.height+'px';f.style.fontSize='110px';f.style.transform='none'}));
-  setTimeout(()=>{f.remove();$('pEmo').style.visibility='visible';$('pLet').classList.add('show');sayLetterThenName(a[1])},650);
-  setTimeout(()=>$('pWord').classList.add('show'),1400);
+  later(()=>{f.remove();$('pEmo').style.visibility='visible';$('pLet').classList.add('show');sayLetterThenName(a[1])},650);
+  later(()=>$('pWord').classList.add('show'),1400);
+  setTimeout(()=>f.remove(),800);
 }
 function closePop(){$('pop').classList.remove('on')}
 function mark(cls){document.querySelectorAll(`.sym[data-k="A:${shared[0]}"],.sym[data-k="L:${sharedL}"]`).forEach(s=>s.classList.add(cls,'hit'))}
 function tap(it,el){
   if(resolved)return;audio();
   if(it.key!=='A:'+shared[0]&&it.key!=='L:'+sharedL){bonk();el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');wrong++;errTotal++;
-    if(wrong>=2){$('msg').textContent='Hör mal …';say('Welches Tier fängt mit '+(SPOKEN[sharedL]||sharedL)+' an?',100);
+    if(wrong===2){$('msg').textContent='Hör mal …';say('Welches Tier fängt mit '+(SPOKEN[sharedL]||sharedL)+' an?',100);
       document.querySelector(`#cardA .sym[data-k="L:${sharedL}"]`).classList.add('hint')}
     return}
   resolved=true;me++;ding();mark('ring');$('msg').textContent='Super! 🎉';
-  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(reveal,300);setTimeout(next,3800)}
+  $('score').textContent=`Du ${me} : ${mx} Max`;later(reveal,900);later(next,4400)}
 function maxWins(){
   resolved=true;mx++;neigh();mark('maxring');$('maxFace').classList.remove('yay');void $('maxFace').offsetWidth;$('maxFace').classList.add('yay');
   $('msg').textContent='Max war schneller!';say('Max war schneller!',200);
-  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(reveal,900);setTimeout(next,4400)}
+  $('score').textContent=`Du ${me} : ${mx} Max`;later(reveal,900);later(next,4400)}
 function next(){closePop();round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
   const good=me>=8&&errTotal<=3,before=getN();let info=`Du: ${me} Karten – Max: ${mx} Karten · Fehltipper: ${errTotal}`,sp;
   if(good&&before<ORDER.length){setN(before+1);const L=ORDER[before];
-    $('endBig').textContent='🌟';$('endTitle').textContent=`Neuer Buchstabe: ${L} ${sch(L.toLowerCase())}`;
+    $('endBig').textContent='🌟';$('endTitle').innerHTML=`Neuer Buchstabe: ${disp(L)} ${sch(L.toLowerCase())}`;
     sp=`Super gespielt! Du bekommst einen neuen Buchstaben: ${SPOKEN[L]||L}.`}
   else{const win=me>mx;$('endBig').textContent=win?'🏆':'🐴';$('endTitle').textContent=win?'Du hast gewonnen!':'Max hat gewonnen!';
     sp=good?'Toll! Du kennst schon alle Buchstaben!':'Gut gemacht! Mit 8 Karten und wenig Fehlern gibt es einen neuen Buchstaben.';
@@ -234,15 +237,15 @@ function finish(){
 }
 function showStart(){
   const n=getN();learned=ORDER.slice(0,n);
-  $('letters').innerHTML=learned.map((l,i)=>`<button class="lb${i===n-1&&n>3?' new':''}" data-l="${l}">${l}${sch(l.toLowerCase())}</button>`).join('');
+  $('letters').innerHTML=learned.map((l,i)=>`<button class="lb${i===n-1&&n>3?' new':''}" data-l="${l}">${disp(l)}${sch(l.toLowerCase())}</button>`).join('');
   $('letters').querySelectorAll('.lb').forEach(b=>b.addEventListener('click',()=>{audio();const l=b.dataset.l,a=ANIM[l][0];sayLetterThenName(a[1])}));
   $('progress').textContent=`Du kennst ${n} von ${ORDER.length} Buchstaben`;show('start');
 }
 function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
-  learned=ORDER.slice(0,getN());errTotal=0;round=0;me=0;mx=0;show('game');say('Oben sind Buchstaben, unten Tiere. Welches Tier fängt mit einem Buchstaben von oben an?');newRound()}
+  gid++;learned=ORDER.slice(0,getN());errTotal=0;round=0;me=0;mx=0;show('game');say('Oben sind Buchstaben, unten Tiere. Welches Tier fängt mit einem Buchstaben von oben an?');newRound()}
 $('go').addEventListener('click',startGame);
 $('again').addEventListener('click',showStart);
-$('homeBtn').addEventListener('click',()=>{resolved=true;closePop();if('speechSynthesis' in window)speechSynthesis.cancel();showStart()});
+$('homeBtn').addEventListener('click',()=>{gid++;clearTimeout(seqT);resolved=true;closePop();if('speechSynthesis' in window)speechSynthesis.cancel();showStart()});
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
 showStart();
 document.addEventListener('gesturestart',e=>e.preventDefault());
