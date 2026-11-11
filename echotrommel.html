@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Echo-Trommel">
+<title>Echo-Trommel</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--ink:#3B2F2A}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;color:var(--ink);
+    background:linear-gradient(#FFF6E5 0%,#FFE9C7 100%);font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#E0661E;box-shadow:0 5px 0 #A84A12}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #A84A12}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:64px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #E3D3B8}
+  #strip{display:flex;gap:3px;background:#fff;border-radius:16px;padding:6px 8px;box-shadow:0 2px 0 #E3D3B8}
+  #strip span{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:50%;background:#F3E9D8}
+  #strip span.cur{box-shadow:0 0 0 3px #FFD23F}
+  #max{display:flex;align-items:flex-end;gap:2px;margin-top:10px}
+  #max .h{font-size:74px;line-height:1}
+  #max .d{font-size:50px;line-height:1;transition:transform .08s}
+  #max .d.hit{transform:translateY(6px) scale(1.15)}
+  #msg{font-size:24px;font-weight:800;min-height:32px;margin:8px 0;text-align:center}
+  #rows{width:min(94vw,440px);background:#fff;border-radius:22px;box-shadow:0 4px 0 #E3D3B8;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+  .row{position:relative;height:40px}
+  .row .lab{position:absolute;left:-4px;top:6px;font-size:24px}
+  .row .ln{position:absolute;left:34px;right:6px;top:19px;height:2px;background:#EADBC3}
+  .dot{position:absolute;top:4px;width:32px;height:32px;margin-left:-16px;border-radius:50%;background:#E8D8BE;transition:transform .1s,background .1s}
+  .dot.lit{background:#E0661E;transform:scale(1.25)}
+  .dot.kid{background:#4F8EDC}
+  .dot.bad{background:#E5534B}
+  #drumWrap{flex:1;display:flex;align-items:center;justify-content:center}
+  #drum{border:0;background:none;padding:0;width:min(62vw,240px);touch-action:none}
+  #drum svg{width:100%;height:auto;display:block;transition:transform .07s}
+  #drum.hit svg{transform:scale(.94) translateY(4px)}
+  #drum.wait{opacity:.55}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#9A8F85}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🐴🥁</div>
+  <h1>Echo-Trommel</h1>
+  <p>Max trommelt vor –<br>du trommelst nach!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div id="strip"></div>
+    <div style="width:46px"></div>
+  </header>
+  <div id="max"><span class="h">🐴</span><span class="d" id="maxDrum">🥁</span></div>
+  <div id="msg"></div>
+  <div id="rows">
+    <div class="row" id="rowMax"><span class="lab">🐴</span><span class="ln"></span></div>
+    <div class="row" id="rowKid"><span class="lab">🙂</span><span class="ln"></span></div>
+  </div>
+  <div id="drumWrap"><button id="drum" class="wait" aria-label="Trommel"><svg viewBox="0 0 200 170">
+    <ellipse cx="100" cy="140" rx="86" ry="22" fill="#A84A12"/>
+    <rect x="14" y="48" width="172" height="92" fill="#E5534B"/>
+    <path d="M14 70 L58 140 L100 70 L142 140 L186 70" fill="none" stroke="#FFD23F" stroke-width="6" stroke-linejoin="round"/>
+    <rect x="14" y="48" width="172" height="12" fill="#FFD23F"/><rect x="14" y="128" width="172" height="12" fill="#FFD23F"/>
+    <ellipse cx="100" cy="48" rx="86" ry="22" fill="#FFF3DD" stroke="#D9C49A" stroke-width="4"/>
+    <ellipse cx="100" cy="48" rx="34" ry="8" fill="#F1E2C4"/></svg></button></div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big">🐴🥁</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=200){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.1;window._u=u;
+  sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function drum(hi=false){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),f0=hi?190:150;
+  o.type='sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f0*.35,t+.18);
+  g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+.36);
+  const d=.05,b=ac.createBuffer(1,ac.sampleRate*d,ac.sampleRate),x=b.getChannelData(0);for(let i=0;i<x.length;i++)x[i]=(Math.random()*2-1)*(1-i/x.length);
+  const s=ac.createBufferSource(),fl=ac.createBiquadFilter(),ng=ac.createGain();s.buffer=b;fl.type='lowpass';fl.frequency.value=1500;ng.gain.value=.25;
+  s.connect(fl).connect(ng).connect(ac.destination);s.start(t)}
+function tone(f,dur,vol=.25,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+const ok=()=>{tone(659,.25,.25);tone(880,.35,.25,.12)};
+const oops=()=>{tone(220,.3,.25);tone(196,.4,.25,.15)};
+
+// ---------- Rhythmen (Einsätze in Schlägen, 1 = Viertel) ----------
+const LEVELS=[
+ [[0,1]],
+ [[0,1,2]],
+ [[0,.5,1.5],[0,1,1.5]],
+ [[0,1,1.5,2],[0,.5,1,2]],
+ [[0,2,3],[0,1,3],[0,.5,2]],
+ [[0,.5,1,2,3],[0,1,1.5,2,3],[0,1,2,2.5,3]],
+ [[0,.5,1.5,2,2.5],[0,1,1.5,2.5,3],[0,.5,1,1.5,2.5]],
+ [[0,1,1.5,2,3,3.5],[0,.5,1,2,2.5,3],[0,.5,1.5,2,3,3.5]]
+];
+const ROUNDS=LEVELS.length,U=520;
+let lvl=0,pat=[],tries=0,res=[],kid=[],turn=false,gid=0,firstTry=0,solved=0,endT=null;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+
+function drawStrip(){$('strip').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="${i===lvl&&res.length===i?'cur':''}">${res[i]||''}</span>`).join('')}
+const span=()=>Math.max(1,pat[pat.length-1]);
+function drawRow(id,vals,cls){const r=$(id);r.querySelectorAll('.dot').forEach(d=>d.remove());
+  vals.forEach((v,i)=>r.insertAdjacentHTML('beforeend',`<div class="dot ${cls}" data-i="${i}" style="left:calc(44px + (100% - 66px) * ${Math.min(v/span(),1.15)})"></div>`))}
+
+function newRhythm(){const pool=LEVELS[lvl];pat=pool[rand(pool.length)];tries=0;drawStrip();playMax()}
+function playMax(){
+  turn=false;kid=[];$('drum').classList.add('wait');$('msg').textContent='Max trommelt … 👂';
+  drawRow('rowMax',pat,'');drawRow('rowKid',[],'');
+  pat.forEach((v,i)=>later(()=>{drum(true);const d=$('rowMax').querySelector(`.dot[data-i="${i}"]`);d.classList.add('lit');
+    const md=$('maxDrum');md.classList.add('hit');setTimeout(()=>md.classList.remove('hit'),110)},700+v*U));
+  later(()=>{turn=true;$('drum').classList.remove('wait');$('msg').textContent='Jetzt du! 🥁'},700+span()*U+700);
+}
+function hit(){
+  audio();drum();const dr=$('drum');dr.classList.add('hit');setTimeout(()=>dr.classList.remove('hit'),90);
+  if(!turn)return;
+  const now=performance.now();kid.push(now);
+  const t=kid.map(x=>(x-kid[0])/U);drawRow('rowKid',t,'kid');
+  clearTimeout(endT);
+  if(kid.length>=pat.length){turn=false;endT=setTimeout(()=>later(check,0),250)}
+  else endT=setTimeout(()=>later(check,0),Math.max(1800,U*2.6));   // zu wenige Schläge: nach einer Pause auswerten
+}
+$('drum').addEventListener('pointerdown',e=>{e.preventDefault();hit()});
+
+// Großzügiger Vergleich: Anzahl gleich, Abstände im Verhältnis ungefähr gleich
+function matches(){
+  if(kid.length!==pat.length)return false;if(pat.length<2)return true;
+  const K=kid[kid.length-1]-kid[0],P=pat[pat.length-1];if(K<=0)return false;
+  return pat.every((p,i)=>Math.abs((kid[i]-kid[0])/K-p/P)<.17);
+}
+function check(){
+  turn=false;$('drum').classList.add('wait');
+  if(matches()){ok();$('rowKid').querySelectorAll('.dot').forEach(d=>d.classList.add('lit'));
+    if(tries===0)firstTry++;solved++;res.push(tries===0?'⭐':'✔️');
+    $('msg').textContent=['Toll! 🎉','Super! 🥁','Genau so! 🎵','Prima! ⭐'][rand(4)];next();return}
+  oops();$('rowKid').querySelectorAll('.dot').forEach(d=>d.classList.add('bad'));tries++;
+  if(tries<2){$('msg').textContent='Hör nochmal genau hin!';say(kid.length<pat.length?'Das waren zu wenige. Hör nochmal!':kid.length>pat.length?'Das waren zu viele. Hör nochmal!':'Fast! Hör nochmal genau hin!');later(playMax,2300)}
+  else{res.push('·');$('msg').textContent='Nächster Rhythmus!';next()}
+}
+function next(){drawStrip();lvl++;if(lvl<ROUNDS)later(newRhythm,1700);else later(finish,1500)}
+function finish(){
+  const st=firstTry>=7?3:solved>=5?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${firstTry} von ${ROUNDS} beim ersten Versuch · ${solved} geschafft`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');drum(true)},400+i*500)});
+  later(()=>say(st===3?'Super! Du bist ein toller Trommler!':st===2?'Toll getrommelt! Hör beim nächsten Mal ganz genau hin!':'Gut gemacht! Hör genau auf Max!'),1900);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;lvl=0;res=[];firstTry=0;solved=0;show('game');drawStrip();$('msg').textContent='';
+  say('Max trommelt dir etwas vor. Trommel es nach!');later(newRhythm,2600)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;turn=false;clearTimeout(endT);if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
