@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tierblick">
+<title>Tierblick</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--bg:#FFF6E5;--ink:#3B2F2A;--card:300px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;touch-action:manipulation;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 10px calc(env(safe-area-inset-bottom) + 12px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#9B6BFF;box-shadow:0 5px 0 #6E45C9}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #6E45C9}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:42px;margin:0} h2{font-size:32px;margin:0}
+  p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:80px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .pill{background:#fff;border-radius:16px;padding:8px 12px;font-size:18px;font-weight:800;box-shadow:0 2px 0 #EBDCC2}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #EBDCC2}
+  #area{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly}
+  .card{position:relative;width:var(--card);height:var(--card);border-radius:50%;background:#fff;
+    box-shadow:0 6px 0 #E3D3B8,0 0 0 6px #fff inset;border:4px solid #F0E3CC;transition:transform .35s}
+  .card.in{animation:cardIn .4s}
+  @keyframes cardIn{from{transform:scale(.4) rotate(-60deg);opacity:0}to{transform:none;opacity:1}}
+  .sym{position:absolute;display:flex;align-items:center;justify-content:center;line-height:1;cursor:pointer;transition:transform .2s}
+  .sym.hit{animation:hit .9s;z-index:3}
+  @keyframes hit{0%,100%{transform:var(--t) scale(1)}40%{transform:var(--t) scale(1.6)}}
+  .sym.ring::after{content:'';position:absolute;inset:-8%;border:5px solid #5BB87A;border-radius:50%}
+  .sym.maxring::after{content:'';position:absolute;inset:-8%;border:5px solid #E5534B;border-radius:50%}
+  .sym.shake{animation:shake .35s}
+  @keyframes shake{25%{transform:var(--t) translateX(6px)}75%{transform:var(--t) translateX(-6px)}}
+  .sym.hint{animation:hint .6s 3}
+  @keyframes hint{50%{transform:var(--t) scale(1.3)}}
+  #maxRow{display:flex;align-items:center;gap:10px;width:min(90%,420px)}
+  #maxFace{font-size:40px;transition:transform .2s}
+  #maxFace.yay{animation:hit .8s}
+  #bar{flex:1;height:16px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 0 #EBDCC2}
+  #barIn{height:100%;width:0;background:linear-gradient(90deg,#FFD23F,#E5534B);border-radius:10px}
+  #msg{font-size:22px;font-weight:800;min-height:30px;text-align:center}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🐴🔍</div>
+  <h1>Tierblick</h1>
+  <p>Welches Tier ist auf beiden Karten?<br>Bist du schneller als Max?</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div class="pill" id="score">Du 0 : 0 Max</div>
+    <div class="pill" id="round">1 / 10</div>
+  </header>
+  <div id="area">
+    <div class="card" id="cardA"></div>
+    <div id="msg"></div>
+    <div id="maxRow"><div id="maxFace">🐴</div><div id="bar"><div id="barIn"></div></div></div>
+    <div class="card" id="cardB"></div>
+  </div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big" id="endBig">🏆</div>
+  <h2 id="endTitle"></h2>
+  <p id="endInfo"></p>
+  <button class="btn" id="again">Nochmal</button>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=300){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.1;window._u=u;
+  sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+const ding=()=>{tone(880,880,.15,'sine',.3);tone(1320,1320,.25,'sine',.25,.1)};
+const bonk=()=>tone(180,70,.2,'triangle',.45);
+const jubel=()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.25,'sine',.3,i*.12));
+function neigh(){if(!ac)return;const t=ac.currentTime,o=ac.createOscillator(),l=ac.createOscillator(),lg=ac.createGain(),g=ac.createGain();
+  o.type='sawtooth';o.frequency.setValueAtTime(700,t);o.frequency.linearRampToValueAtTime(950,t+.25);o.frequency.linearRampToValueAtTime(500,t+1);
+  l.frequency.value=14;lg.gain.value=60;l.connect(lg).connect(o.frequency);
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.16,t+.05);g.gain.linearRampToValueAtTime(.001,t+1);
+  o.connect(g).connect(ac.destination);o.start(t);l.start(t);o.stop(t+1);l.stop(t+1)}
+
+// ---------- Tiere ----------
+const ANIMALS=[['🐶','Hund'],['🐱','Katze'],['🐭','Maus'],['🐰','Hase'],['🦊','Fuchs'],['🐻','Bär'],['🐼','Panda'],['🐨','Koala'],
+ ['🐯','Tiger'],['🦁','Löwe'],['🐮','Kuh'],['🐷','Schwein'],['🐸','Frosch'],['🐵','Affe'],['🐔','Huhn'],['🐧','Pinguin'],
+ ['🦆','Ente'],['🦉','Eule'],['🐝','Biene'],['🐞','Marienkäfer'],['🦋','Schmetterling'],['🐌','Schnecke'],['🐢','Schildkröte'],
+ ['🐙','Krake'],['🐠','Fisch'],['🐬','Delfin'],['🐳','Wal'],['🦒','Giraffe'],['🐘','Elefant'],['🦓','Zebra'],['🐊','Krokodil'],['🦔','Igel']];
+
+// Positionen im Kreis (relativ, 0..1)
+const SPOTS={
+ 3:[[.5,.27],[.29,.66],[.71,.66]],
+ 4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]],
+ 6:[[.5,.5],[.5,.18],[.8,.4],[.69,.77],[.31,.77],[.2,.4]]
+};
+const ROUNDS=10;
+const perCard=r=>r<3?3:r<6?4:6;
+const maxTime=n=>({3:6500,4:8500,6:12000}[n])+rand(2500);   // so lange braucht Max (ms)
+
+let round=0,me=0,mx=0,shared=null,resolved=true,t0=0,limit=0,wrong=0;
+
+function makeCard(el,syms){
+  const n=syms.length,C=el.clientWidth,spots=SPOTS[n],off=rand(360)*Math.PI/180;
+  el.innerHTML='';el.classList.remove('in');void el.offsetWidth;el.classList.add('in');
+  syms.forEach((a,k)=>{
+    let [x,y]=spots[k];
+    // ganze Anordnung zufällig drehen
+    const dx=x-.5,dy=y-.5;x=.5+dx*Math.cos(off)-dy*Math.sin(off);y=.5+dx*Math.sin(off)+dy*Math.cos(off);
+    const base=n===3?.34:n===4?.3:.24,sz=C*base*(.75+Math.random()*.45),rot=rand(80)-40;
+    const d=document.createElement('div');d.className='sym';d.textContent=a[0];d.dataset.e=a[0];
+    d.style.cssText=`left:${x*C-sz/2}px;top:${y*C-sz/2}px;width:${sz}px;height:${sz}px;font-size:${sz*.85}px;--t:rotate(${rot}deg);transform:rotate(${rot}deg)`;
+    d.addEventListener('click',()=>tap(a,d));el.appendChild(d)});
+}
+
+function newRound(){
+  const n=perCard(round),pool=shuffle(ANIMALS.slice());
+  shared=pool[0];const A=shuffle([shared,...pool.slice(1,n)]),B=shuffle([shared,...pool.slice(n,2*n-1)]);
+  const size=Math.floor(Math.min(innerWidth-40,(innerHeight-230)/2,380));
+  document.documentElement.style.setProperty('--card',size+'px');
+  requestAnimationFrame(()=>{makeCard($('cardA'),A);makeCard($('cardB'),B)});
+  $('round').textContent=`${round+1} / ${ROUNDS}`;$('score').textContent=`Du ${me} : ${mx} Max`;
+  $('msg').textContent=round===0?'Welches Tier ist auf beiden Karten?':'';
+  wrong=0;resolved=false;limit=maxTime(n)+(round===0?3000:0);t0=performance.now();$('barIn').style.width='0';
+  requestAnimationFrame(tick);
+}
+function tick(now){if(resolved)return;
+  const p=Math.min(1,(now-t0)/limit);$('barIn').style.width=(p*100)+'%';
+  if(p>=1){maxWins();return}requestAnimationFrame(tick)}
+
+function mark(cls){document.querySelectorAll(`.sym[data-e="${shared[0]}"]`).forEach(s=>s.classList.add(cls,'hit'))}
+function tap(a,el){
+  if(resolved)return;audio();
+  if(a!==shared){bonk();el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');wrong++;
+    if(wrong>=2){$('msg').textContent='Schau mal genau hier!';document.querySelector(`#cardA .sym[data-e="${shared[0]}"]`).classList.add('hint')}
+    return}
+  resolved=true;me++;ding();mark('ring');$('msg').textContent=`${shared[1]}! Super! 🎉`;say(shared[1]+'!',100);
+  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(next,1800)}
+function maxWins(){
+  resolved=true;mx++;neigh();mark('maxring');$('maxFace').classList.remove('yay');void $('maxFace').offsetWidth;$('maxFace').classList.add('yay');
+  $('msg').textContent=`Max war schneller: ${shared[1]}!`;say(`Max war schneller! ${shared[1]}!`,200);
+  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(next,2600)}
+function next(){round++;if(round<ROUNDS)newRound();else finish()}
+function finish(){
+  const win=me>mx,draw=me===mx;
+  $('endBig').textContent=win?'🏆':draw?'🤝':'🐴';
+  $('endTitle').textContent=win?'Du hast gewonnen!':draw?'Unentschieden!':'Max hat gewonnen!';
+  $('endInfo').textContent=`Du: ${me} Karten – Max: ${mx} Karten`;
+  show('end');jubel();say(win?'Toll! Du warst schneller als Max!':draw?'Unentschieden! Ihr seid beide super!':'Max hat diesmal gewonnen. Probier es nochmal!');
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  round=0;me=0;mx=0;show('game');say('Welches Tier ist auf beiden Karten? Tippe es an, bevor Max es findet!');newRound()}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{resolved=true;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
