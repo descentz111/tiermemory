@@ -310,8 +310,8 @@ function endStep(s){
 }
 
 // ================= Wörter legen =================
-const SPOKEN={A:'a',B:'bö',C:'kö',D:'dö',E:'e',F:'fff',G:'gö',H:'hö',I:'i',J:'jö',K:'kö',L:'lll',M:'mmm',N:'nnn',O:'o',
-  P:'pö',Q:'kwö',R:'rrr',S:'sss',T:'tö',U:'u',V:'fff',W:'www',X:'ks',Y:'ü',Z:'tsö','Ä':'ä','Ö':'ö','Ü':'ü'}; // Laute statt Buchstabennamen
+const SPOKEN={A:'a',B:'bö',C:'kö',D:'dö',E:'e',F:'f',G:'gö',H:'hö',I:'i',J:'jö',K:'kö',L:'l',M:'m',N:'n',O:'o',
+  P:'pö',Q:'kwö',R:'r',S:'s',T:'tö',U:'u',V:'fff',W:'w',X:'ks',Y:'ü',Z:'tsö','Ä':'ä','Ö':'ö','Ü':'ü'}; // Laute statt Buchstabennamen
 let word='',wname='',filled=[],tiles=[],wbusy=false;
 function wordStep(st){
   const w=picked[st.n],name=w[0].charAt(0)+w[0].slice(1).toLowerCase(),s={word:w[0],q:'Das ist …',hint:`<div style="font-size:min(30vw,130px);line-height:1;height:100%;display:flex;align-items:center;justify-content:center">${w[1]}</div>`,speak:`Das ist ${w[2]} ${name}`.replace('  ',' ')};

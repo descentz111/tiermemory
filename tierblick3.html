@@ -150,8 +150,8 @@ let sayT=null;
 function say(t,delay=300){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
   const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.1;window._u=u;
   sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
-const SPOKEN={A:'a',B:'bö',C:'kö',D:'dö',E:'e',F:'fff',G:'gö',H:'hö',I:'i',J:'jö',K:'kö',L:'lll',M:'mmm',N:'nnn',O:'o',
-  P:'pö',R:'rrr',S:'sss',T:'tö',U:'u',W:'www',Z:'tsö'};
+const SPOKEN={A:'a',B:'bö',C:'kö',D:'dö',E:'e',F:'f',G:'gö',H:'hö',I:'i',J:'jö',K:'kö',L:'l',M:'m',N:'n',O:'o',
+  P:'pö',R:'r',S:'s',T:'tö',U:'u',W:'w',Z:'tsö'};
 let seqT=null;
 function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);clearTimeout(seqT);
   const mk=t=>{const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.85;u.pitch=1.1;return u};
