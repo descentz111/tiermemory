@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Eisenbahn">
+<title>Eisenbahn</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--bg:#FFF6E5;--ink:#3B2F2A;--c:60px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;touch-action:manipulation;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 16px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#E5534B;box-shadow:0 5px 0 #A93A33}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #A93A33}
+  #start,#end{justify-content:center;gap:22px;text-align:center}
+  h1{font-size:42px;margin:0} h2{font-size:32px;margin:0}
+  .big svg{width:180px;height:auto}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .pill{background:#fff;border-radius:16px;padding:8px 14px;font-size:18px;font-weight:800;box-shadow:0 2px 0 #EBDCC2}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #EBDCC2}
+  #msg{font-size:20px;font-weight:800;min-height:28px;margin:14px 0;text-align:center}
+  #wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
+  #board{position:relative;background:#7CC46A;border-radius:16px;box-shadow:0 5px 0 #5A9B4C}
+  .cell{position:absolute;width:var(--c);height:var(--c);padding:2px}
+  .tile{width:100%;height:100%;border-radius:9px;background:#8FD17E;display:flex;align-items:center;justify-content:center;
+    font-size:calc(var(--c)*.5);transition:background .2s}
+  .cell.on .tile{background:#C9F0B4}
+  .cell.fixed .tile{background:#B8BEC6}
+  .cell.side .tile{background:transparent}
+  .tile svg{width:100%;height:100%;transition:transform .25s ease}
+  .cell.shake{animation:shake .3s}
+  @keyframes shake{25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+  .deco{position:absolute;font-size:calc(var(--c)*.45);pointer-events:none}
+  #train{position:absolute;left:0;top:0;width:calc(var(--c)*.78);pointer-events:none;z-index:5}
+  #train svg{width:100%;height:auto;display:block}
+  .stars{font-size:44px;letter-spacing:4px}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big" id="bigTrain"></div>
+  <h1>Eisenbahn</h1>
+  <p style="margin:0;font-size:20px;font-weight:700">Dreh die Schienen,<br>damit der Zug ans Ziel kommt!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div class="pill" id="lvl">Strecke 1 / 5</div>
+    <div style="width:46px"></div>
+  </header>
+  <div id="msg">Tippe auf eine Schiene zum Drehen</div>
+  <div id="wrap"><div id="board"></div></div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big" id="bigTrain2"></div>
+  <h2>Alle 5 Strecken geschafft! 🎉</h2>
+  <div class="stars">⭐⭐⭐⭐⭐</div>
+  <button class="btn" id="again">Nochmal</button>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+const rand=n=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=300){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.85;u.pitch=1.1;window._u=u;
+  sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function noise(dur,freq,vol=.3){if(!ac)return;const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=b;f.type='bandpass';f.frequency.value=freq;g.gain.value=vol;s.connect(f).connect(g).connect(ac.destination);s.start()}
+const click=()=>{tone(900,500,.06,'square',.12)};
+const bonk=()=>tone(180,70,.2,'triangle',.45);
+const whistle=()=>{tone(880,880,.35,'sine',.25);tone(1100,1100,.35,'sine',.18);tone(880,880,.5,'sine',.25,.45);tone(1100,1100,.5,'sine',.18,.45)};
+const chug=()=>noise(.12,900,.35);
+const jubel=()=>[523,659,784,1047].forEach((f,i)=>tone(f,f,.25,'sine',.3,i*.12));
+
+// ---------- Grafik ----------
+const SL='#8B5A2B',RL='#59616B';
+function railSVG(type,fixed){
+  let s='';
+  if(type==='S'){
+    for(const x of [10,30,50,70,90])s+=`<rect x="${x-4}" y="20" width="8" height="60" rx="2" fill="${SL}"/>`;
+    s+=`<line x1="0" y1="34" x2="100" y2="34" stroke="${RL}" stroke-width="6"/><line x1="0" y1="66" x2="100" y2="66" stroke="${RL}" stroke-width="6"/>`;
+  }else{ // Kurve verbindet West und Süd, Mittelpunkt (0,100)
+    for(const a of [8,26,45,64,82]){const r=a*Math.PI/180;
+      s+=`<line x1="${Math.cos(r)*20}" y1="${100-Math.sin(r)*20}" x2="${Math.cos(r)*80}" y2="${100-Math.sin(r)*80}" stroke="${SL}" stroke-width="8" stroke-linecap="round"/>`}
+    for(const R of [34,66])s+=`<path d="M0 ${100-R} A${R} ${R} 0 0 1 ${R} 100" fill="none" stroke="${RL}" stroke-width="6"/>`;
+  }
+  if(fixed)s+=[[10,10],[90,10],[10,90],[90,90]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="5" fill="#6B7079"/>`).join('');
+  return `<svg viewBox="0 0 100 100">${s}</svg>`}
+const LOCO=`<svg viewBox="0 0 100 60"><rect x="4" y="10" width="82" height="40" rx="10" fill="#E5534B"/><rect x="4" y="7" width="30" height="46" rx="7" fill="#A93A33"/>
+  <rect x="8" y="14" width="22" height="32" rx="4" fill="#FFE7A8"/><circle cx="66" cy="30" r="9" fill="#2B2B2B"/><rect x="86" y="15" width="10" height="30" rx="3" fill="#F4B400"/></svg>`;
+$('bigTrain').innerHTML=$('bigTrain2').innerHTML=LOCO;
+
+// ---------- Schienen-Logik ----------
+// Richtungen als Bits: N=1, O=2, S=4, W=8
+const DV={1:[-1,0],2:[0,1],4:[1,0],8:[0,-1]},OPP={1:4,2:8,4:1,8:2};
+const BASE={S:10,C:12}; // Gerade = O+W, Kurve = W+S
+const rot1=m=>((m<<1)|(m>>3))&15;
+function rotm(m,r){for(let k=0;k<r;k++)m=rot1(m);return m}
+const SIZES=[3,3,4,4,5],FIXED=[0,1,1,2,3];
+let level=0,N,sr,gr,grid,busy=false,c;
+
+function genPath(){
+  const minL=N+1,maxL=Math.ceil(N*N*.7);
+  for(let t=0;t<400;t++){
+    const s=rand(N),g=rand(N),path=[],vis=new Set();
+    function dfs(i,j){path.push([i,j]);vis.add(i*N+j);if(i===g&&j===N-1)return true;
+      for(const [di,dj] of shuffle([[0,1],[1,0],[-1,0],[0,-1]])){const a=i+di,b=j+dj;
+        if(a<0||b<0||a>=N||b>=N||vis.has(a*N+b))continue;if(dfs(a,b))return true}
+      path.pop();return false}
+    if(dfs(s,0)&&((path.length>=minL&&path.length<=maxL)||t>350))return{s,g,path}
+  }}
+
+function newLevel(){
+  N=SIZES[level];busy=false;
+  const {s,g,path}=genPath();sr=s;gr=g;
+  grid=Array.from({length:N},()=>Array(N).fill(null));
+  path.forEach(([i,j],k)=>{
+    const din=k===0?8:(()=>{const [pi,pj]=path[k-1];return OPP[dirOf(pi,pj,i,j)]})();
+    const dout=k===path.length-1?2:dirOf(i,j,path[k+1][0],path[k+1][1]);
+    const m=din|dout,type=(m===5||m===10)?'S':'C';
+    let r=0;while(rotm(BASE[type],r)!==m)r++;
+    grid[i][j]={type,ok:r,r,fixed:false};
+  });
+  // feste Stücke (richtig gedreht, grau)
+  shuffle(path.slice(1,-1).concat(path.length<3?path:[])).slice(0,FIXED[level]).forEach(([i,j])=>grid[i][j].fixed=true);
+  // verdrehen, bis die Strecke nicht mehr stimmt
+  do{path.forEach(([i,j])=>{const p=grid[i][j];if(!p.fixed)p.r=(p.ok+1+rand(3))%4})}while(trace().ok);
+  render();
+  $('lvl').textContent=`Strecke ${level+1} / 5`;
+  $('msg').textContent='Tippe auf eine Schiene zum Drehen';
+  say(level===0?'Dreh die Schienen, damit der Zug ans Ziel fahren kann!':`Strecke ${level+1}`);
+}
+function dirOf(i,j,a,b){return a<i?1:a>i?4:b>j?2:8}
+const maskOf=p=>rotm(BASE[p.type],p.r);
+
+function trace(){let i=sr,j=0,din=8;const cells=[],seen=new Set();
+  while(true){if(i<0||j<0||i>=N||j>=N)return{cells,ok:false};
+    const p=grid[i][j];if(!p||!(maskOf(p)&din)||seen.has(i*N+j))return{cells,ok:false};
+    seen.add(i*N+j);const dout=maskOf(p)&~din;cells.push({i,j,din,dout});
+    if(i===gr&&j===N-1&&dout===2)return{cells,ok:true};
+    const [di,dj]=DV[dout];i+=di;j+=dj;din=OPP[dout]}}
+
+// ---------- Darstellung ----------
+function render(){
+  c=Math.floor(Math.min((innerWidth-24)/(N+2),(innerHeight-260)/N,110));
+  document.documentElement.style.setProperty('--c',c+'px');
+  const b=$('board');b.style.width=(N+2)*c+'px';b.style.height=N*c+'px';b.innerHTML='';
+  // Start und Ziel
+  b.insertAdjacentHTML('beforeend',`<div class="cell side" style="left:0;top:${sr*c}px"><div class="tile">${railSVG('S')}</div></div>`);
+  b.insertAdjacentHTML('beforeend',`<div class="cell side" style="left:${(N+1)*c}px;top:${gr*c}px"><div class="tile">${railSVG('S')}</div></div>
+    <div class="deco" style="left:${(N+1)*c+c*.25}px;top:${gr*c-c*.45}px">🏁</div>`);
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+    const p=grid[i][j],x=(j+1)*c,y=i*c;
+    if(!p){b.insertAdjacentHTML('beforeend',`<div class="cell" style="left:${x}px;top:${y}px"><div class="tile" style="opacity:.8">${['🌳','🌼','🌲','🌷',''][rand(5)]}</div></div>`);continue}
+    const el=document.createElement('div');el.className='cell'+(p.fixed?' fixed':'');el.style.left=x+'px';el.style.top=y+'px';
+    el.innerHTML=`<div class="tile">${railSVG(p.type,p.fixed)}</div>`;p.el=el;p.deg=p.r*90;
+    el.querySelector('svg').style.transform=`rotate(${p.deg}deg)`;
+    el.addEventListener('click',()=>tap(p));b.appendChild(el)}
+  b.insertAdjacentHTML('beforeend',`<div id="train">${LOCO}</div>`);
+  placeTrain(c*.5,sr*c+c/2,0);
+  highlight();
+}
+function placeTrain(x,y,a){const t=$('train'),w=c*.78,h=w*.6;t.style.transform=`translate(${x-w/2}px,${y-h/2}px) rotate(${a}rad)`}
+function highlight(){const r=trace();
+  grid.flat().forEach(p=>p&&p.el.classList.remove('on'));r.cells.forEach(({i,j})=>grid[i][j].el.classList.add('on'));return r}
+
+function tap(p){
+  if(busy)return;audio();
+  if(p.fixed){bonk();p.el.classList.remove('shake');void p.el.offsetWidth;p.el.classList.add('shake');return}
+  p.r=(p.r+1)%4;p.deg+=90;p.el.querySelector('svg').style.transform=`rotate(${p.deg}deg)`;click();
+  const r=highlight();if(r.ok){busy=true;setTimeout(()=>drive(r.cells),350)}
+}
+
+// ---------- Zug fährt ----------
+const MID={1:[50,0],2:[100,50],4:[50,100],8:[0,50]};
+function cellPts(din,dout){const a=MID[din],b=MID[dout],m=din|dout,pts=[];
+  if(m===5||m===10){for(let k=1;k<=8;k++)pts.push([a[0]+(b[0]-a[0])*k/8,a[1]+(b[1]-a[1])*k/8])}
+  else{const cx=m&2?100:0,cy=m&4?100:0,a0=Math.atan2(a[1]-cy,a[0]-cx);let d=Math.atan2(b[1]-cy,b[0]-cx)-a0;
+    while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+    for(let k=1;k<=8;k++){const g=a0+d*k/8;pts.push([cx+50*Math.cos(g),cy+50*Math.sin(g)])}}
+  return pts}
+function drive(cells){
+  $('msg').textContent='Tschu-tschu! 🚂';whistle();
+  const P=[];for(let k=0;k<=8;k++)P.push([c*.5+c*.5*k/8,sr*c+c/2]);
+  cells.forEach(({i,j,din,dout})=>cellPts(din,dout).forEach(([x,y])=>P.push([(j+1)*c+x*c/100,i*c+y*c/100])));
+  for(let k=1;k<=8;k++)P.push([(N+1)*c+c*.5*k/8,gr*c+c/2]);
+  const dur=P.length*45;let t0=null,lastChug=0;
+  function anim(now){if(!t0)t0=now;const f=Math.min(1,(now-t0)/dur)*(P.length-1),k=Math.floor(f),q=f-k;
+    const a=P[k],b=P[Math.min(k+1,P.length-1)],x=a[0]+(b[0]-a[0])*q,y=a[1]+(b[1]-a[1])*q;
+    const n=P[Math.min(k+2,P.length-1)],pv=P[Math.max(k-1,0)];placeTrain(x,y,Math.atan2(n[1]-pv[1],n[0]-pv[0]));
+    if(now-lastChug>260){chug();lastChug=now}
+    if(f<P.length-1)requestAnimationFrame(anim);else finishLevel()}
+  requestAnimationFrame(anim);
+}
+function finishLevel(){jubel();$('msg').textContent='Geschafft! 🎉';say(level<4?'Super! Geschafft!':'Toll! Alle Strecken geschafft!');
+  setTimeout(()=>{level++;if(level<5)newLevel();else show('end')},2200)}
+
+// ---------- Start ----------
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  level=0;show('game');newLevel()}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{busy=true;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+addEventListener('resize',()=>{if($('game').classList.contains('on')&&!busy)render()});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
