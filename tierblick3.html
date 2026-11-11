@@ -51,7 +51,7 @@
   .prow{display:flex;align-items:center;justify-content:center;gap:18px}
   #pEmo{font-size:110px;line-height:1;width:120px;height:120px;display:flex;align-items:center;justify-content:center;visibility:hidden}
   #pLet{font-size:120px;font-weight:900;line-height:1;color:#FF8A3D;opacity:0;transform:scale(.3);transition:all .4s cubic-bezier(.3,1.5,.5,1)}
-  #pLet i{font-style:normal;font-size:80px;color:#E8A06A;margin-left:6px}
+  #pLet i{font-style:normal}
   #pLet.show{opacity:1;transform:none}
   #pWord{font-size:40px;font-weight:800;margin-top:8px;opacity:0;transition:opacity .3s}
   #pWord.show{opacity:1}
@@ -63,6 +63,8 @@
   .lb.new{background:#FFE7A8}
   .lb.new::after{content:'neu';position:absolute;top:-10px;right:-8px;background:#E5534B;color:#fff;font-size:11px;padding:2px 6px;border-radius:8px}
   .sym.let{font-weight:900;color:var(--lc);font-family:-apple-system,"SF Pro Rounded",system-ui,sans-serif;letter-spacing:.02em}
+  .gk{color:#E5534B}
+  .gk i,i.kl{font-style:normal;font-size:.78em;color:#2E7CC4;margin-left:.04em}
   #intro{justify-content:center;gap:10px;text-align:center}
   #inLet{font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;font-size:150px;line-height:1.1;color:#FF8A3D}
   #inEmo{font-size:110px;line-height:1.1}
@@ -137,6 +139,7 @@ function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speech
   const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},700)};
   u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},250)}
 const disp=l=>l;
+const pair=l=>`<span class="gk">${l}<i>${l.toLowerCase()}</i></span>`; // groß rot, klein blau und etwas kleiner
 const sch=t=>String(t); // Schul-a (einstöckig)
 let ac=null;
 function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
@@ -202,7 +205,7 @@ function newRound(){
   const size=Math.floor(Math.min(innerWidth-40,(innerHeight-230)/2,380));
   document.documentElement.style.setProperty('--card',size+'px');
   requestAnimationFrame(()=>{
-    makeCard($('cardA'),shuffle(top).map(l=>({txt:disp(l)+sch(l.toLowerCase()),key:'L:'+l,let:1})));
+    makeCard($('cardA'),shuffle(top).map(l=>({txt:pair(l),key:'L:'+l,let:1})));
     makeCard($('cardB'),animals.map(a=>({txt:a[0],key:'A:'+a[0]})))});
   $('round').textContent=`${round+1} / ${ROUNDS}`;$('score').textContent=`Du ${me} : ${mx} Max`;
   $('msg').textContent=round===0?'Welches Tier passt zu einem Buchstaben?':'';
@@ -218,7 +221,7 @@ function tick(now){if(resolved)return;
 function reveal(){
   const a=shared,L=a[1][0],src=document.querySelector(`#cardB .sym[data-k="A:${a[0]}"]`);
   $('pEmo').textContent=a[0];$('pEmo').style.visibility='hidden';
-  $('pLet').innerHTML=`${disp(L)}<i>${sch(L.toLowerCase())}</i>`;$('pLet').classList.remove('show');
+  $('pLet').innerHTML=pair(L);$('pLet').classList.remove('show');
   $('pWord').innerHTML=`<b>${disp(L)}</b>${sch(a[1].slice(1))}`;$('pWord').classList.remove('show');
   $('pop').classList.add('on');
   const r=src.getBoundingClientRect(),t=$('pEmo').getBoundingClientRect(),f=document.createElement('div');
@@ -248,7 +251,7 @@ function next(){closePop();round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
   const good=me>=7&&errTotal<=4,before=getN();let info=`Du: ${me} Karten – Max: ${mx} Karten · Fehltipper: ${errTotal}`,sp;
   if(good&&before<ORDER.length){setN(before+1);const L=ORDER[before];
-    $('endBig').textContent='🌟';$('endTitle').innerHTML=`Neuer Buchstabe: ${disp(L)} ${sch(L.toLowerCase())}`;
+    $('endBig').textContent='🌟';$('endTitle').innerHTML=`Neuer Buchstabe: ${pair(L)}`;
     sp=`Super gespielt! Du bekommst einen neuen Buchstaben: ${SPOKEN[L]||L}.`}
   else{const win=me>mx;$('endBig').textContent=win?'🏆':'🐴';$('endTitle').textContent=win?'Du hast gewonnen!':'Max hat gewonnen!';
     sp=good?'Toll! Du kennst schon alle Buchstaben!':'Gut gemacht! Mit 7 Karten und wenig Fehlern gibt es einen neuen Buchstaben.';
@@ -257,7 +260,7 @@ function finish(){
 }
 function showStart(){
   const n=getN();learned=ORDER.slice(0,n);
-  $('letters').innerHTML=learned.map((l,i)=>`<button class="lb${i===n-1&&n>3?' new':''}" data-l="${l}">${disp(l)}${sch(l.toLowerCase())}</button>`).join('');
+  $('letters').innerHTML=learned.map((l,i)=>`<button class="lb${i===n-1&&n>3?' new':''}" data-l="${l}">${pair(l)}</button>`).join('');
   $('letters').querySelectorAll('.lb').forEach(b=>b.addEventListener('click',()=>{audio();const l=b.dataset.l,a=ANIM[l][0];sayLetterThenName(a[1])}));
   $('progress').textContent=`Du kennst ${n} von ${ORDER.length} Buchstaben`;show('start');
 }
@@ -270,7 +273,7 @@ function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechS
   const step=i=>{
     if(i>=fresh.length){endIntro();return}
     const l=fresh[i],a=ANIM[l][0];
-    $('inLet').textContent=l+l.toLowerCase();$('inEmo').textContent=a[0];$('inWord').innerHTML=`<b>${l}</b>${a[1].slice(1)}`;
+    $('inLet').innerHTML=pair(l);$('inEmo').textContent=a[0];$('inWord').innerHTML=`<b>${l}</b>${a[1].slice(1)}`;
     ['inLet','inEmo','inWord'].forEach(id=>{const e=$(id);e.classList.remove('inAnim');void e.offsetWidth;e.classList.add('inAnim')});
     sayLetterThenName(a[1]);later(()=>step(i+1),3600)};
   step(0);
