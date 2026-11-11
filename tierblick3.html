@@ -120,6 +120,7 @@ function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speech
   const L=name[0].toUpperCase(),u1=mk(SPOKEN[L]||L);window._u=u1;let done=false;
   const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},700)};
   u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},250)}
+const sch=t=>String(t).replace(/a/g,'\u0251'); // Schul-a (einstöckig)
 let ac=null;
 function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
 function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
@@ -181,7 +182,7 @@ function newRound(){
   const size=Math.floor(Math.min(innerWidth-40,(innerHeight-230)/2,380));
   document.documentElement.style.setProperty('--card',size+'px');
   requestAnimationFrame(()=>{
-    makeCard($('cardA'),shuffle(top).map(l=>({txt:l+l.toLowerCase(),key:'L:'+l,let:1})));
+    makeCard($('cardA'),shuffle(top).map(l=>({txt:l+sch(l.toLowerCase()),key:'L:'+l,let:1})));
     makeCard($('cardB'),animals.map(a=>({txt:a[0],key:'A:'+a[0]})))});
   $('round').textContent=`${round+1} / ${ROUNDS}`;$('score').textContent=`Du ${me} : ${mx} Max`;
   $('msg').textContent=round===0?'Welches Tier passt zu einem Buchstaben?':'';
@@ -195,8 +196,8 @@ function tick(now){if(resolved)return;
 function reveal(){
   const a=shared,L=a[1][0],src=document.querySelector(`#cardB .sym[data-k="A:${a[0]}"]`);
   $('pEmo').textContent=a[0];$('pEmo').style.visibility='hidden';
-  $('pLet').innerHTML=`${L}<i>${L.toLowerCase()}</i>`;$('pLet').classList.remove('show');
-  $('pWord').innerHTML=`<b>${L}</b>${a[1].slice(1)}`;$('pWord').classList.remove('show');
+  $('pLet').innerHTML=`${L}<i>${sch(L.toLowerCase())}</i>`;$('pLet').classList.remove('show');
+  $('pWord').innerHTML=`<b>${L}</b>${sch(a[1].slice(1))}`;$('pWord').classList.remove('show');
   $('pop').classList.add('on');
   const r=src.getBoundingClientRect(),t=$('pEmo').getBoundingClientRect(),f=document.createElement('div');
   f.className='fly';f.textContent=a[0];
@@ -224,7 +225,7 @@ function next(){closePop();round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
   const good=me>=8&&errTotal<=3,before=getN();let info=`Du: ${me} Karten – Max: ${mx} Karten · Fehltipper: ${errTotal}`,sp;
   if(good&&before<ORDER.length){setN(before+1);const L=ORDER[before];
-    $('endBig').textContent='🌟';$('endTitle').textContent=`Neuer Buchstabe: ${L} ${L.toLowerCase()}`;
+    $('endBig').textContent='🌟';$('endTitle').textContent=`Neuer Buchstabe: ${L} ${sch(L.toLowerCase())}`;
     sp=`Super gespielt! Du bekommst einen neuen Buchstaben: ${SPOKEN[L]||L}.`}
   else{const win=me>mx;$('endBig').textContent=win?'🏆':'🐴';$('endTitle').textContent=win?'Du hast gewonnen!':'Max hat gewonnen!';
     sp=good?'Toll! Du kennst schon alle Buchstaben!':'Gut gemacht! Mit 8 Karten und wenig Fehlern gibt es einen neuen Buchstaben.';
@@ -233,7 +234,7 @@ function finish(){
 }
 function showStart(){
   const n=getN();learned=ORDER.slice(0,n);
-  $('letters').innerHTML=learned.map((l,i)=>`<button class="lb${i===n-1&&n>3?' new':''}" data-l="${l}">${l}${l.toLowerCase()}</button>`).join('');
+  $('letters').innerHTML=learned.map((l,i)=>`<button class="lb${i===n-1&&n>3?' new':''}" data-l="${l}">${l}${sch(l.toLowerCase())}</button>`).join('');
   $('letters').querySelectorAll('.lb').forEach(b=>b.addEventListener('click',()=>{audio();const l=b.dataset.l,a=ANIM[l][0];sayLetterThenName(a[1])}));
   $('progress').textContent=`Du kennst ${n} von ${ORDER.length} Buchstaben`;show('start');
 }

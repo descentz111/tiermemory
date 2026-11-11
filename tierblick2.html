@@ -113,6 +113,7 @@ function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speech
   const L=name[0].toUpperCase(),u1=mk(SPOKEN[L]||L);window._u=u1;let done=false;
   const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},700)};
   u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},250)}
+const sch=t=>String(t).replace(/a/g,'\u0251'); // Schul-a (einstöckig)
 let ac=null;
 function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
 function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
@@ -176,8 +177,8 @@ function tick(now){if(resolved)return;
 function reveal(){
   const a=shared,L=a[1][0],src=document.querySelector(`#cardA .sym[data-e="${a[0]}"]`);
   $('pEmo').textContent=a[0];$('pEmo').style.visibility='hidden';
-  $('pLet').innerHTML=`${L}<i>${L.toLowerCase()}</i>`;$('pLet').classList.remove('show');
-  $('pWord').innerHTML=`<b>${L}</b>${a[1].slice(1)}`;$('pWord').classList.remove('show');
+  $('pLet').innerHTML=`${L}<i>${sch(L.toLowerCase())}</i>`;$('pLet').classList.remove('show');
+  $('pWord').innerHTML=`<b>${L}</b>${sch(a[1].slice(1))}`;$('pWord').classList.remove('show');
   $('pop').classList.add('on');
   const r=src.getBoundingClientRect(),t=$('pEmo').getBoundingClientRect(),f=document.createElement('div');
   f.className='fly';f.textContent=a[0];

@@ -255,6 +255,7 @@ const ANIMALS=[
   <polygon points="45,50 55,50 50,59" fill="#F9A825"/>
   <path d="M38 92 l3 -5 l3 5 M56 92 l3 -5 l3 5" fill="none" stroke="#F9A825" stroke-width="3" stroke-linecap="round"/>`}
 ];
+const sch=t=>String(t).replace(/a/g,'\u0251'); // Schul-a (einstöckig)
 const svgOf=a=>`<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${a.svg}</svg>`;
 const L=a=>a.n[0].toUpperCase();
 
@@ -325,8 +326,8 @@ function tap(i){
 let popTimer=null;
 function popup(a){
   lock=true;
-  $('popbox').innerHTML=`${svgOf(a)}<div class="letter">${L(a)}<i>${L(a).toLowerCase()}</i></div>
-    <div class="word"><b>${a.n[0]}</b>${a.n.slice(1)}</div><div class="hint">Tippen zum Weiterspielen</div>`;
+  $('popbox').innerHTML=`${svgOf(a)}<div class="letter">${L(a)}<i>${sch(L(a).toLowerCase())}</i></div>
+    <div class="word"><b>${a.n[0]}</b>${sch(a.n.slice(1))}</div><div class="hint">Tippen zum Weiterspielen</div>`;
   $('pop').classList.add('on');
   clearTimeout(popTimer);popTimer=setTimeout(closePop,4000);
 }
@@ -343,7 +344,7 @@ function finish(){
   document.querySelectorAll('.step').forEach(s=>s.classList.toggle('me',+s.dataset.p===place));
   $('placeTxt').textContent=`Platz ${place}!`;
   $('list').innerHTML=found.slice().sort((a,b)=>a.n.localeCompare(b.n,'de')).map(a=>
-    `<div class="li">${svgOf(a)}<div><b>${L(a)}</b> wie ${a.n}</div></div>`).join('');
+    `<div class="li">${svgOf(a)}<div><b>${L(a)}</b> wie ${sch(a.n)}</div></div>`).join('');
   show('end');say(`Super gemacht! Platz ${place}!`);
 }
 
