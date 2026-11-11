@@ -65,7 +65,7 @@ window.renderTiles=function(){
   document.getElementById('list').innerHTML=GROUPS.map(gr=>`<h2 style="--c:${gr.c}"><span class="dot"></span>${gr.t}</h2>
   <div class="grid">${gr.g.map(([h,e,n,d])=>`<a class="tile${free(h)?'':' locked'}" style="--c:${gr.c}" href="${h}" data-f="${h}"><div class="emo">${e}</div><div class="name">${n}</div><div class="desc">${d}</div></a>`).join('')}</div>`).join('');
   document.querySelectorAll('a.tile').forEach(a=>{let t=null;
-    a.addEventListener('click',e=>{if(!free(a.dataset.f)){e.preventDefault();a.classList.remove('shake');void a.offsetWidth;a.classList.add('shake');say('Dieses Spiel ist noch zu. Frag Mama oder Papa!')}});
+    a.addEventListener('click',e=>{if(!free(a.dataset.f)){e.preventDefault();a.classList.remove('shake');void a.offsetWidth;a.classList.add('shake')}});
     a.addEventListener('pointerdown',()=>{if(!free(a.dataset.f))t=setTimeout(()=>window.SZ&&SZ.openParent(),2000)});
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>a.addEventListener(ev,()=>clearTimeout(t)))});
 };
