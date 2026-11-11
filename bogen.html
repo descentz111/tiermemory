@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bogenschütze">
+<title>Bogenschütze</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  :root{--ink:#2F3B4A}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;color:var(--ink);background:#CDEBFF;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#3F9560;box-shadow:0 5px 0 #2A6B43}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #2A6B43}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:64px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #A9CBE3}
+  #strip{display:flex;gap:3px;background:#fff;border-radius:16px;padding:6px 8px;box-shadow:0 2px 0 #A9CBE3}
+  #strip span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:50%;background:#EAF3FA}
+  #strip span.cur{box-shadow:0 0 0 3px #FFD23F}
+  #task{font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;font-size:56px;line-height:1;background:#fff;border-radius:22px;
+    padding:12px 24px;box-shadow:0 5px 0 #A9CBE3;margin-top:10px;white-space:nowrap}
+  #task .q{color:#E5534B;display:inline-block;min-width:.8em}
+  #task.ok .q{color:#3F9560}
+  #msg{font-size:22px;font-weight:800;min-height:30px;margin:8px 0 0;text-align:center}
+  #cvWrap{flex:1;width:100%;min-height:0;position:relative}
+  #cv{position:absolute;inset:0;width:100%;height:100%}
+  #meter{width:min(94vw,460px);position:relative;height:58px;margin-bottom:8px}
+  #meter .bar{position:absolute;left:0;right:0;top:20px;height:16px;border-radius:10px;background:#fff;box-shadow:0 2px 0 #A9CBE3;overflow:hidden}
+  #meter .fill{height:100%;width:0;background:linear-gradient(90deg,#FFD23F,#E0661E)}
+  #meter .ticks{position:absolute;left:0;right:0;top:40px;display:flex;justify-content:space-between;font-family:Schul,system-ui;font-weight:700;font-size:15px}
+  #meter .ticks span{width:0;display:flex;justify-content:center}
+  #pow{position:absolute;top:-8px;font-family:Schul,system-ui;font-weight:700;font-size:28px;transform:translateX(-50%);color:#E0661E}
+  #hold{width:min(90vw,380px);height:84px;border:0;border-radius:26px;background:#3F9560;box-shadow:0 7px 0 #2A6B43;color:#fff;font:inherit;font-size:26px;font-weight:800}
+  #hold.down{background:#E0661E;box-shadow:0 2px 0 #A84A12;transform:translateY(5px)}
+  #hold.wait{opacity:.5}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#6F8296}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🏹🎯</div>
+  <h1>Bogenschütze</h1>
+  <p>Rechne aus, wie weit die Scheibe ist.<br>Halte gedrückt und lass beim<br>richtigen Wert los!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div id="strip"></div>
+    <div style="width:46px"></div>
+  </header>
+  <div id="task"></div>
+  <div id="msg"></div>
+  <div id="cvWrap"><canvas id="cv"></canvas></div>
+  <div id="meter"><div id="pow">0</div><div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="ticks"></div></div>
+  <button id="hold" class="wait">🏹 Gedrückt halten</button>
+</section>
+
+<section id="end" class="screen">
+  <div class="big">🏹🎯</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+document.querySelector('#meter .ticks').innerHTML=Array.from({length:11},(_,i)=>`<span>${i}</span>`).join('');
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=250){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.85;u.pitch=1.1;window._u=u;sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f,dur,type='sine',vol=.25,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function noise(dur,freq,vol){if(!ac)return;const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),x=b.getChannelData(0);
+  for(let i=0;i<x.length;i++)x[i]=(Math.random()*2-1)*(1-i/x.length);const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=b;f.type='bandpass';f.frequency.value=freq;g.gain.value=vol;s.connect(f).connect(g).connect(ac.destination);s.start()}
+const twang=()=>{tone(180,.35,'triangle',.3);noise(.25,2500,.25)};
+const thud=()=>{tone(140,.18,'sine',.5);noise(.06,900,.4)};
+const ok=()=>{tone(659,.25,'sine',.25);tone(880,.35,'sine',.25,.12)};
+const tick=n=>tone(300+n*60,.06,'square',.06);
+
+// ---------- Aufgaben ----------
+const ROUNDS=10,FULL=3200;   // ms von 0 bis 10
+let r=0,task=null,tries=0,res=[],firstTry=0,solved=0,gid=0,pow=0,holding=false,hStart=0,ready=false,arrow=null,stuck=[],lastTick=-1,seen=new Set();
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+function makeTask(){for(let t=0;t<60;t++){let a,b,op;
+  if(r<5||Math.random()<.5){op='+';a=1+rand(9);b=1+rand(10-a);if(a+b>10||a+b<2)continue}else{op='−';a=3+rand(8);b=1+rand(a-2)}
+  const k=a+op+b;if(seen.has(k))continue;seen.add(k);return{a,b,op,r:op==='+'?a+b:a-b}}return{a:3,b:4,op:'+',r:7}}
+const spoken=t=>`${t.a} ${t.op==='+'?'plus':'minus'} ${t.b}`;
+function drawStrip(){$('strip').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="${i===r&&res.length===i?'cur':''}">${res[i]||''}</span>`).join('')}
+
+// ---------- Szene ----------
+const cv=$('cv'),ctx=cv.getContext('2d');let W,H;
+function resize(){const d=devicePixelRatio||1,b=$('cvWrap').getBoundingClientRect();W=b.width;H=b.height;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',()=>{if($('game').classList.contains('on'))resize()});
+const gy=()=>H*.78,x0=()=>W*.13,xs=v=>x0()+(W*.93-x0())*v/10;
+function draw(now){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#9FD4F5');g.addColorStop(1,'#E2F4FF');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#7CC46A';ctx.fillRect(0,gy(),W,H);
+  // Maßband 0–10
+  ctx.font='700 13px Schul,system-ui';ctx.textAlign='center';ctx.textBaseline='top';
+  for(let v=0;v<=10;v++){const x=xs(v);ctx.fillStyle='#4A7A3C';ctx.fillRect(x-1,gy(),2,8);ctx.fillStyle='#2F5524';ctx.fillText(v,x,gy()+10)}
+  // Scheibe
+  if(task){const x=xs(task.r),h=Math.min(46,H*.2),cy=gy()-h*1.05;
+    ctx.fillStyle='#8B5A2B';ctx.fillRect(x-3,cy,6,gy()-cy);
+    [['#fff',1],['#E5534B',.8],['#fff',.6],['#E5534B',.4],['#FFD23F',.2]].forEach(([c,s])=>{ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(x,cy,h*.32*s,h*s,0,0,7);ctx.fill()});}
+  // steckende Pfeile
+  stuck.forEach(a=>arrowAt(a.x,a.y,a.ang,a.hit));
+  // Schütze mit Bogen
+  archer();
+  if(arrow){const q=Math.min(1,(now-arrow.t)/arrow.dur),sx=x0()+18,sy=gy()-50,ex=xs(arrow.v),ey=arrow.ey,peak=Math.max(30,(ex-sx)*.35);
+    const x=sx+(ex-sx)*q,y=sy+(ey-sy)*q-peak*4*q*(1-q);arrowAt(x,y,Math.atan2((ey-sy)-peak*4*(1-2*q),ex-sx),false)}
+}
+function archer(){const x=x0(),y=gy(),p=pow/10;
+  ctx.strokeStyle='#3E5C99';ctx.lineWidth=6;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x-6,y);ctx.lineTo(x-2,y-30);ctx.lineTo(x+6,y);ctx.stroke();
+  ctx.fillStyle='#3F9560';ctx.fillRect(x-9,y-56,18,28);
+  ctx.fillStyle='#F6CBA0';ctx.beginPath();ctx.arc(x,y-66,10,0,7);ctx.fill();
+  ctx.fillStyle='#3F9560';ctx.beginPath();ctx.moveTo(x-11,y-70);ctx.lineTo(x+11,y-70);ctx.lineTo(x+16,y-82);ctx.closePath();ctx.fill();
+  // Bogen (spannt sich mit pow)
+  const bx=x+20,by=y-50,R=30,pull=6+p*22;
+  ctx.strokeStyle='#8B5A2B';ctx.lineWidth=4;ctx.beginPath();ctx.arc(bx-R*.4,by,R,-1.1,1.1);ctx.stroke();
+  const tx=bx-R*.4+R*Math.cos(1.1),ty1=by-R*Math.sin(1.1),ty2=by+R*Math.sin(1.1);
+  ctx.strokeStyle='#555';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(tx,ty1);ctx.lineTo(tx-pull,by);ctx.lineTo(tx,ty2);ctx.stroke();
+  ctx.strokeStyle='#F6CBA0';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x+5,y-50);ctx.lineTo(tx-pull,by);ctx.stroke();
+  if(!arrow&&ready)arrowAt(tx-pull+26,by,0,false);
+}
+function arrowAt(x,y,ang,hit){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.strokeStyle='#6B3E1E';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(4,0);ctx.stroke();
+  ctx.fillStyle='#59616B';ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(0,-4);ctx.lineTo(0,4);ctx.fill();
+  ctx.fillStyle=hit?'#FFD23F':'#E5534B';ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(-20,-5);ctx.lineTo(-17,0);ctx.lineTo(-20,5);ctx.fill();ctx.restore()}
+function loop(now){if(!$('game').classList.contains('on'))return;
+  if(holding){pow=Math.min(10,(now-hStart)/FULL*10);const n=Math.floor(pow);if(n!==lastTick){lastTick=n;tick(n)}setMeter()}
+  draw(now);requestAnimationFrame(loop)}
+function setMeter(){$('fill').style.width=(pow*10)+'%';$('pow').style.left=(pow*10)+'%';$('pow').textContent=Math.round(pow)}
+
+// ---------- Ablauf ----------
+function newTask(){task=makeTask();tries=0;stuck=[];pow=0;setMeter();drawStrip();
+  $('task').classList.remove('ok');$('task').innerHTML=`${task.a} ${task.op} ${task.b} = <span class="q">?</span>`;
+  $('msg').textContent='Rechne aus, wie weit es ist!';say(spoken(task),400);
+  ready=true;$('hold').classList.remove('wait')}
+function down(e){e.preventDefault();audio();if(!ready||arrow)return;holding=true;hStart=performance.now();lastTick=-1;$('hold').classList.add('down');$('msg').textContent='Lass beim richtigen Wert los!'}
+function up(e){e.preventDefault();if(!holding)return;holding=false;$('hold').classList.remove('down');shoot()}
+$('hold').addEventListener('pointerdown',down);$('hold').addEventListener('pointerup',up);$('hold').addEventListener('pointercancel',up);$('hold').addEventListener('pointerleave',up);
+function shoot(){
+  const v=Math.round(pow);ready=false;$('hold').classList.add('wait');twang();
+  const h0=Math.min(46,H*.2);arrow={v,t:performance.now(),dur:500+v*60,ey:v===task.r?gy()-h0*1.05:gy()-4};
+  later(()=>{const hit=v===task.r,h=Math.min(46,H*.2);
+    stuck.push({x:xs(v),y:hit?gy()-h*1.05:gy()-4,ang:hit?0:.5,hit});arrow=null;thud();
+    if(hit){ok();if(tries===0)firstTry++;solved++;res.push(tries===0?'⭐':'✔️');drawStrip();
+      $('task').classList.add('ok');$('task').querySelector('.q').textContent=task.r;$('msg').textContent='Treffer! 🎯';
+      say(`Treffer! ${spoken(task)} ist ${task.r}.`,200);later(next,2800);return}
+    tries++;tone(220,.3,'sine',.25);
+    const t=v<task.r?'Zu kurz!':'Zu weit!';
+    if(tries<2){$('msg').textContent=`${t} Rechne nochmal.`;say(`${t} Rechne nochmal: ${spoken(task)}`,200);
+      later(()=>{pow=0;setMeter();ready=true;$('hold').classList.remove('wait')},2200)}
+    else{res.push('·');drawStrip();$('task').querySelector('.q').textContent=task.r;$('msg').textContent=`${t} Es ist ${task.r}.`;
+      say(`${spoken(task)} ist ${task.r}.`,200);later(next,3200)}
+  },arrow.dur);
+}
+function next(){r++;if(r<ROUNDS)newTask();else finish()}
+function finish(){
+  const st=firstTry>=8?3:solved>=6?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${firstTry} von ${ROUNDS} beim ersten Schuss · ${solved} getroffen`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');tone([523,659,784][i],.5,'sine',.3)},400+i*500)});
+  later(()=>say(st===3?'Super! Du bist ein Meisterschütze!':st===2?'Toll geschossen! Rechne beim nächsten Mal ganz in Ruhe!':'Gut gemacht! Übung macht den Meister!'),1900);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;r=0;res=[];firstTry=0;solved=0;seen=new Set();arrow=null;show('game');resize();requestAnimationFrame(loop);
+  say('Rechne aus, wie weit die Scheibe ist. Halte gedrückt und lass beim richtigen Wert los!');later(newTask,4200)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;holding=false;ready=false;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
