@@ -111,8 +111,8 @@ let seqT=null;
 function sayLetterThenName(name){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);clearTimeout(seqT);
   const mk=t=>{const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.85;u.pitch=1.1;return u};
   const L=name[0].toUpperCase(),u1=mk(SPOKEN[L]||L);window._u=u1;let done=false;
-  const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},1000)};
-  u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},400)}
+  const next=()=>{if(done)return;done=true;seqT=setTimeout(()=>{const u2=mk(name);window._u2=u2;speechSynthesis.speak(u2)},700)};
+  u1.onend=next;seqT=setTimeout(()=>{speechSynthesis.speak(u1);setTimeout(next,2500)},250)}
 let ac=null;
 function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
 function tone(f1,f2,dur,type='sine',vol=.3,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
@@ -185,7 +185,7 @@ function reveal(){
   document.body.appendChild(f);
   requestAnimationFrame(()=>requestAnimationFrame(()=>{f.style.left=t.left+'px';f.style.top=t.top+'px';f.style.width=t.width+'px';f.style.height=t.height+'px';f.style.fontSize='110px';f.style.transform='none'}));
   setTimeout(()=>{f.remove();$('pEmo').style.visibility='visible';$('pLet').classList.add('show');sayLetterThenName(a[1])},650);
-  setTimeout(()=>$('pWord').classList.add('show'),1900);
+  setTimeout(()=>$('pWord').classList.add('show'),1400);
 }
 function closePop(){$('pop').classList.remove('on')}
 function mark(cls){document.querySelectorAll(`.sym[data-e="${shared[0]}"]`).forEach(s=>s.classList.add(cls,'hit'))}
@@ -195,11 +195,11 @@ function tap(a,el){
     if(wrong>=2){$('msg').textContent='Schau mal genau hier!';document.querySelector(`#cardA .sym[data-e="${shared[0]}"]`).classList.add('hint')}
     return}
   resolved=true;me++;ding();mark('ring');$('msg').textContent='Super! 🎉';
-  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(reveal,700);setTimeout(next,5200)}
+  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(reveal,300);setTimeout(next,3800)}
 function maxWins(){
   resolved=true;mx++;neigh();mark('maxring');$('maxFace').classList.remove('yay');void $('maxFace').offsetWidth;$('maxFace').classList.add('yay');
   $('msg').textContent='Max war schneller!';say('Max war schneller!',200);
-  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(reveal,1500);setTimeout(next,6000)}
+  $('score').textContent=`Du ${me} : ${mx} Max`;setTimeout(reveal,900);setTimeout(next,4400)}
 function next(){closePop();round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
   const win=me>mx,draw=me===mx;
