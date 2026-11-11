@@ -132,14 +132,15 @@ function draw(now){
   // Wolken
   ctx.fillStyle='rgba(255,255,255,.9)';[[.15,.12,1],[.62,.08,.8]].forEach(([fx,fy,sc],k)=>{const cx=((fx*W+t*8*(k+1))%(W+120))-60,cy=fy*H;
     [[0,0,18],[18,-8,22],[38,0,17],[18,6,18]].forEach(([dx,dy,r])=>{ctx.beginPath();ctx.arc(cx+dx*sc,cy+dy*sc,r*sc,0,7);ctx.fill()})});
+  // Wiese reicht hoch bis zu den Bäumen
+  g=ctx.createLinearGradient(0,G*.58,0,H);g.addColorStop(0,'#9BD47F');g.addColorStop(.5,'#86C96E');g.addColorStop(1,'#5FA850');ctx.fillStyle=g;
+  ctx.beginPath();ctx.moveTo(0,G*.6);ctx.quadraticCurveTo(W*.5,G*.55,W,G*.6);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.07)';for(let x=0;x<W;x+=14){ctx.fillRect(x,G-8,2,6)}
   // Waldrand hinten (zwei Reihen Bäume)
   forest(G*.62,'#4E8F55','#3F7A47',.75,1);forest(G*.74,'#3F7A47','#2F6338',1,2);
   // Lichtstrahlen
   ctx.save();ctx.globalAlpha=.12+.04*Math.sin(t);ctx.fillStyle='#FFF6C8';
   [[.3,.18],[.55,.12],[.78,.15]].forEach(([fx,w])=>{ctx.beginPath();ctx.moveTo(W*fx,0);ctx.lineTo(W*(fx+w),0);ctx.lineTo(W*(fx+w*1.8),G);ctx.lineTo(W*(fx+w*.6),G);ctx.fill()});ctx.restore();
-  // Wiese
-  g=ctx.createLinearGradient(0,G-8,0,H);g.addColorStop(0,'#86C96E');g.addColorStop(1,'#5FA850');ctx.fillStyle=g;ctx.fillRect(0,G-8,W,H);
-  ctx.fillStyle='rgba(255,255,255,.07)';for(let x=0;x<W;x+=14){ctx.fillRect(x,G-8,2,6)}
   // Pilze, Blumen, Eichhörnchen
   deco(t);
   // Zielscheibe
