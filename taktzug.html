@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Takt-Zug">
+<title>Takt-Zug</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--ink:#2F3B4A}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;color:var(--ink);background:#CDEBFF;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#E5534B;box-shadow:0 5px 0 #A93A33}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #A93A33}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:64px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
+  .pill{background:#fff;border-radius:16px;padding:8px 14px;font-size:18px;font-weight:800;box-shadow:0 2px 0 #A9CBE3}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #A9CBE3}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #msg{position:relative;z-index:2;margin-top:14px;font-size:24px;font-weight:800;text-align:center;min-height:32px;text-shadow:0 2px 0 #fff}
+  #bell{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 22px);
+    width:130px;height:130px;border:0;border-radius:50%;background:#FFD23F;box-shadow:0 8px 0 #C9A21E;font-size:64px}
+  #bell.hit{background:#7ED08A;box-shadow:0 8px 0 #4A9E58}
+  #bell:active{transform:translateX(-50%) translateY(5px);box-shadow:0 3px 0 #C9A21E}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#6F8296}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🚂🔔🎵</div>
+  <h1>Takt-Zug</h1>
+  <p>Wenn ein Waggon mit Glocke<br>am Bahnwärter ist: tippen!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <canvas id="cv"></canvas>
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div class="pill" id="trainNo">Zug 1 / 3</div>
+    <div class="pill" id="score">🔔 0</div>
+  </header>
+  <div id="msg"></div>
+  <button id="bell" aria-label="Glocke">🔔</button>
+</section>
+
+<section id="end" class="screen">
+  <div class="big">🚂</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=200){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.9;u.pitch=1.1;window._u=u;
+  sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f,dur,type='sine',vol=.25,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function chug(vol=.18){if(!ac)return;const d=.09,b=ac.createBuffer(1,ac.sampleRate*d,ac.sampleRate),x=b.getChannelData(0);
+  for(let i=0;i<x.length;i++)x[i]=(Math.random()*2-1)*(1-i/x.length);const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=b;f.type='bandpass';f.frequency.value=700;g.gain.value=vol;s.connect(f).connect(g).connect(ac.destination);s.start()}
+const ding=()=>{tone(1568,.9,'sine',.35);tone(2093,.7,'sine',.2);tone(3136,.4,'sine',.08)};
+const klack=()=>tone(220,.08,'triangle',.15);
+const whistle=()=>{tone(880,.4,'sine',.22);tone(1108,.4,'sine',.15);tone(880,.55,'sine',.22,.5);tone(1108,.55,'sine',.15,.5)};
+
+// Melodie (Alle meine Entchen, Volkslied) – ein Ton pro Waggon
+const MEL=[262,294,330,349,392,392,440,440,440,440,392,0,349,349,349,349,330,330,294,294,294,294,262,0];
+
+// ---------- Spiel ----------
+const cv=$('cv'),ctx=cv.getContext('2d');
+const TRAINS=3,CARS=12,BEATS=[760,660,580];
+let W,H,trainIdx=0,cars=[],T=760,t0=0,lastBeat=-99,hits=0,bells=0,wild=0,gid=0,running=false,stars=[],lead=4;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+function resize(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',resize);
+
+function newTrain(){
+  T=BEATS[trainIdx];cars=[];let last=-3;
+  for(let k=0;k<CARS;k++){const bell=k>=1&&k-last>=2&&Math.random()<.42;if(bell)last=k;cars.push({bell,done:false,hit:false,col:['#4F8EDC','#5BB87A','#9B6BFF','#E0661E'][k%4]})}
+  if(cars.filter(c=>c.bell).length<3){[2,6,9].forEach(k=>cars[k].bell=true)}
+  bells+=cars.filter(c=>c.bell).length;
+  $('trainNo').textContent=`Zug ${trainIdx+1} / ${TRAINS}`;
+  whistle();t0=performance.now()+300;lastBeat=-99;running=true;requestAnimationFrame(loop);
+}
+// Waggon k ist zum Zeitpunkt (k+lead)*T am Bahnwärter
+const arrive=k=>(k+lead)*T;
+function stationX(){return W*.36}
+function carW(){return Math.min(110,W*.24)}
+
+function loop(now){
+  if(!running)return;
+  const t=now-t0,sp=carW()/T;
+  // Takt: Melodie + Dampf
+  const beat=Math.floor(t/T);
+  if(beat>lastBeat&&t>=0){lastBeat=beat;const k=beat-lead;
+    if(k>=-lead&&k<CARS+2){const f=MEL[(beat+MEL.length)%MEL.length];if(f)tone(f,.35,'triangle',.18);chug()}
+    later(()=>{if(running)chug(.1)},T/2)}
+  // verpasste Glocken
+  cars.forEach((c,k)=>{if(c.bell&&!c.done&&t>arrive(k)+T*.45){c.done=true;c.miss=true}});
+  draw(t,sp);
+  if(t>arrive(CARS)+T*2.5){running=false;endTrain();return}
+  requestAnimationFrame(loop);
+}
+function draw(t,sp){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#8FCBF2');g.addColorStop(1,'#E8F6FF');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  const ty=H*.6;
+  // Hügel
+  ctx.fillStyle='#9ED38A';ctx.beginPath();ctx.moveTo(0,ty);for(let x=0;x<=W;x+=20)ctx.lineTo(x,ty-30-Math.sin((x+t*sp*.2)/90)*22);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+  ctx.fillStyle='#7CC46A';ctx.fillRect(0,ty+10,W,H);
+  // Gleis
+  const off=(t*sp)%30;ctx.fillStyle='#8B5A2B';for(let x=-off;x<W;x+=30)ctx.fillRect(x,ty+4,10,16);
+  ctx.fillStyle='#59616B';ctx.fillRect(0,ty+4,W,4);ctx.fillRect(0,ty+16,W,4);
+  // Bahnwärter-Zone
+  const sx=stationX(),cw=carW(),near=cars.some((c,k)=>c.bell&&!c.done&&Math.abs(t-arrive(k))<T*1.2);
+  ctx.save();ctx.globalAlpha=near?.55+.25*Math.sin(t/90):.25;ctx.fillStyle='#FFD23F';ctx.fillRect(sx-cw*.5,ty-cw*.95,cw,cw*.95+22);ctx.restore();
+  ctx.strokeStyle='#C9A21E';ctx.setLineDash([8,6]);ctx.lineWidth=3;ctx.strokeRect(sx-cw*.5,ty-cw*.95,cw,cw*.95+22);ctx.setLineDash([]);
+  // Bahnwärter
+  ctx.font=`${cw*.6}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText('👮',sx,ty-cw*1.0);
+  // Zug
+  const xOf=k=>sx+(arrive(k)-t)*sp;
+  // Lok (ein Platz vor Waggon 0)
+  const lx=xOf(-1);if(lx<W+cw&&lx>-cw*2)loco(lx,ty,cw,t);
+  cars.forEach((c,k)=>{const x=xOf(k);if(x<-cw||x>W+cw)return;
+    ctx.fillStyle=c.hit?'#FFD23F':c.col;round(x-cw*.46,ty-cw*.62,cw*.92,cw*.58,10);
+    ctx.fillStyle='rgba(255,255,255,.35)';round(x-cw*.36,ty-cw*.55,cw*.72,cw*.16,5);
+    wheel(x-cw*.26,ty+2,cw);wheel(x+cw*.26,ty+2,cw);
+    ctx.fillStyle='#444';ctx.fillRect(x+cw*.46,ty-cw*.18,cw*.08,6);
+    if(c.bell){ctx.save();ctx.globalAlpha=c.miss?.3:1;ctx.font=`${cw*.48}px system-ui`;ctx.textBaseline='middle';
+      const wob=c.hit?Math.sin(t/40)*.4:0;ctx.translate(x,ty-cw*.33);ctx.rotate(wob);ctx.fillText('🔔',0,0);ctx.restore()}});
+  // Sterne
+  stars=stars.filter(s=>t-s.t<900);stars.forEach(s=>{const q=(t-s.t)/900;ctx.save();ctx.globalAlpha=1-q;ctx.font=`${cw*.5}px system-ui`;
+    ctx.fillText('⭐',s.x,ty-cw*.9-q*120);ctx.restore()});
+}
+function round(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.fill()}
+function wheel(x,y,cw){ctx.fillStyle='#2B2B2B';ctx.beginPath();ctx.arc(x,y-cw*.04,cw*.12,0,7);ctx.fill();ctx.fillStyle='#999';ctx.beginPath();ctx.arc(x,y-cw*.04,cw*.04,0,7);ctx.fill()}
+function loco(x,ty,cw,t){ctx.fillStyle='#E5534B';round(x-cw*.48,ty-cw*.62,cw*.96,cw*.58,10);
+  ctx.fillStyle='#A93A33';round(x+cw*.05,ty-cw*.95,cw*.42,cw*.4,8);ctx.fillStyle='#FFE7A8';round(x+cw*.13,ty-cw*.88,cw*.26,cw*.2,4);
+  ctx.fillStyle='#2B2B2B';ctx.fillRect(x-cw*.36,ty-cw*.92,cw*.14,cw*.32);
+  for(let i=0;i<3;i++){const q=((t/700)+i/3)%1;ctx.fillStyle=`rgba(255,255,255,${.8-q*.8})`;ctx.beginPath();ctx.arc(x-cw*.29-q*cw*.2+q*cw*.8,ty-cw*.98-q*cw*.7,cw*(.08+q*.12),0,7);ctx.fill()}
+  wheel(x-cw*.25,ty+2,cw);wheel(x+cw*.25,ty+2,cw)}
+
+function tap(){
+  if(!running)return;audio();
+  const t=performance.now()-t0;let best=-1,bd=1e9;
+  cars.forEach((c,k)=>{if(c.bell&&!c.done){const d=Math.abs(t-arrive(k));if(d<bd){bd=d;best=k}}});
+  if(best>=0&&bd<=T*.45){const c=cars[best];c.done=true;c.hit=true;hits++;ding();stars.push({x:stationX(),t});
+    $('score').textContent=`🔔 ${hits}`;$('bell').classList.add('hit');later(()=>$('bell').classList.remove('hit'),250)}
+  else{wild++;klack()}
+}
+$('bell').addEventListener('pointerdown',e=>{e.preventDefault();tap()});
+cv.addEventListener('pointerdown',e=>{e.preventDefault();tap()});
+
+function endTrain(){
+  const got=cars.filter(c=>c.hit).length,all=cars.filter(c=>c.bell).length;
+  $('msg').textContent=got===all?'Alle Glocken! 🎉':got>=all/2?'Toll! 🎵':'Weiter so!';
+  trainIdx++;
+  if(trainIdx<TRAINS){later(()=>{$('msg').textContent='Der nächste Zug kommt!';say('Der nächste Zug kommt!')},1200);later(()=>{$('msg').textContent='';newTrain()},3400)}
+  else later(finish,1800);
+}
+function finish(){
+  const q=hits/bells,st=q>=.9?3:q>=.6?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${hits} von ${bells} Glocken getroffen · Fehltipper: ${wild}`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');tone([523,659,784][i],.5,'sine',.3)},400+i*500)});
+  later(()=>{if(st===3)whistle();say(st===3?'Super! Du bist ein toller Bahnwärter!':st===2?'Toll! Hör beim nächsten Mal genau auf den Takt!':'Gut gemacht! Achte auf die Glocken!')},1900);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;trainIdx=0;hits=0;bells=0;wild=0;stars=[];show('game');resize();$('score').textContent='🔔 0';
+  $('msg').textContent='Hör auf den Takt!';say('Wenn ein Waggon mit Glocke beim Bahnwärter ist, tippe!');later(()=>{$('msg').textContent='';newTrain()},3600)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;running=false;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+</body>
+</html>
