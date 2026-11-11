@@ -58,5 +58,6 @@ document.getElementById('list').innerHTML=GROUPS.map(gr=>`<h2 style="--c:${gr.c}
   <div class="grid">${gr.g.map(([h,e,n,d])=>`<a class="tile" style="--c:${gr.c}" href="${h}"><div class="emo">${e}</div><div class="name">${n}</div><div class="desc">${d}</div></a>`).join('')}</div>`).join('');
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
 </script>
+<script src="zeit.js"></script>
 </body>
 </html>
