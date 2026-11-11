@@ -271,7 +271,7 @@ function maxWins(){
   later(reveal,900);later(next,4400)}
 function next(){closePop();['cardA','cardB'].forEach(c=>$(c).classList.remove('locked'));round++;if(round<ROUNDS)newRound();else finish()}
 function finish(){
-  const n3=starCards>=7,stars=n3?3:(starCards>=4||me>=7)?2:1,before=getN(),canNew=n3&&before<ORDER.length;
+  const n3=starCards>=8,stars=n3?3:(starCards>=4||me>=7)?2:1,before=getN(),canNew=n3&&before<ORDER.length;
   show('end');$('giftOpen').classList.remove('on');$('gift').style.display='';
   $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
   $('lock').style.display=canNew?'none':'';$('gift').classList.toggle('wob',canNew);
