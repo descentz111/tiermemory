@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Segelschiff">
+<title>Segelschiff</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--ink:#1F3550}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;color:var(--ink);background:#2E6E9E;
+    font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#E0661E;box-shadow:0 5px 0 #A84A12}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #A84A12}
+  #start,#end{justify-content:center;gap:18px;text-align:center;color:#fff}
+  h1{font-size:40px;margin:0} h2{font-size:30px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:76px;line-height:1}
+  #game{padding:0}
+  #cv{position:absolute;inset:0;width:100%;height:100%}
+  header{position:relative;z-index:2;width:100%;display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 10px) 12px 0}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #1F3550}
+  .pill{background:#fff;border-radius:16px;padding:6px 12px;font-size:17px;font-weight:800;box-shadow:0 2px 0 #1F3550;display:flex;align-items:center;gap:6px}
+  #hull{width:46px;height:16px;border-radius:0 0 12px 12px;border:3px solid #6B3E1E;position:relative;overflow:hidden;background:#F6E4BA}
+  #hullW{position:absolute;left:0;right:0;bottom:0;height:0;background:#3A9FD0;transition:height .6s}
+  #hint{position:relative;z-index:2;margin-top:10px;font-size:38px;font-weight:900;color:#fff;background:#E0661E;border-radius:20px;padding:6px 22px;
+    box-shadow:0 5px 0 #A84A12;opacity:0;transform:scale(.6);transition:all .25s}
+  #hint.on{opacity:1;transform:scale(1)}
+  #wheelBox{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) - min(30vw,130px));transform:translateX(-50%);width:min(80vw,340px);height:min(80vw,340px);z-index:2}
+  #wheel{width:100%;height:100%;transition:transform .45s cubic-bezier(.3,1.4,.5,1)}
+  .half{position:absolute;top:0;bottom:0;width:50%;border:0;background:transparent}
+  .half.l{left:0}.half.r{right:0}
+  .half:active{background:rgba(255,255,255,.12)}
+  #wheelBox.wait .half{pointer-events:none}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#BFD6E8}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">⛵🧭</div>
+  <h1>Segelschiff</h1>
+  <p>Hör auf den Matrosen!<br>Ruft er „Links!" oder „Rechts!",<br>dann lenke dorthin.</p>
+  <button class="btn" id="go">Leinen los!</button>
+</section>
+
+<section id="game" class="screen">
+  <canvas id="cv"></canvas>
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div class="pill" id="prog">⚓ 0 / 12</div>
+    <div class="pill"><div id="hull"><div id="hullW"></div></div></div>
+  </header>
+  <div id="hint"></div>
+  <div id="wheelBox" class="wait">
+    <svg id="wheel" viewBox="-100 -100 200 200">
+      
+    </svg>
+    <button class="half l" id="leftBtn" aria-label="Links"></button>
+    <button class="half r" id="rightBtn" aria-label="Rechts"></button>
+  </div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big" id="endBig">⚓</div>
+  <h2 id="endTitle"></h2>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// Steuerrad zeichnen
+(function(){let g='';for(let i=0;i<8;i++){const a=i*Math.PI/4,x=Math.cos(a),y=Math.sin(a);
+  g+=`<line x1="${x*22}" y1="${y*22}" x2="${x*96}" y2="${y*96}" stroke="#8B5A2B" stroke-width="11" stroke-linecap="round"/><circle cx="${x*96}" cy="${y*96}" r="9" fill="#A0693A"/>`}
+  $('wheel').innerHTML=`<circle r="70" fill="none" stroke="#8B5A2B" stroke-width="16"/><circle r="70" fill="none" stroke="#A0693A" stroke-width="6"/>${g}
+  <circle r="24" fill="#A0693A" stroke="#6B3E1E" stroke-width="5"/><circle r="8" fill="#E0A800"/>`})();
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=150,rate=.95,pitch=1.1){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=rate;u.pitch=pitch;u.volume=1;window._u=u;sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f,dur,vol=.2,delay=0,type='sine'){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function noise(dur,f,vol,type='lowpass'){if(!ac)return;const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);const s=ac.createBufferSource(),fl=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=b;fl.type=type;fl.frequency.value=f;g.gain.value=vol;s.connect(fl).connect(g).connect(ac.destination);s.start()}
+const rumms=()=>{tone(70,.6,.8,0,'sine');tone(45,.8,.6,.05,'triangle');noise(.5,600,.9);noise(.3,2500,.4,'bandpass')};
+const swoosh=()=>noise(.7,900,.25,'bandpass');
+const ding=()=>{tone(880,.2,.2);tone(1175,.3,.2,.1)};
+const bell=()=>{[0,.45].forEach(d=>{tone(1320,1.1,.18,d);tone(1980,.7,.08,d)})};
+
+// ---------- Spiel ----------
+const cv=$('cv'),ctx=cv.getContext('2d'),TOTAL=12,SHOW_HINT=3;
+let W,H,obs=null,heading=0,headTarget=0,done=0,crashes=0,good=0,gid=0,running=false,shake=0,sinkT=0,winT=0,mate='',mateT=0,lastT=0,waveOff=0;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+function resize(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',()=>{if($('game').classList.contains('on'))resize()});
+const hy=()=>H*.3,bowY=()=>H*.5;
+const ROCKS=['🪨','🧊','🐋','🦈','🏝️','🪵'];
+
+function newObstacle(){
+  const side=Math.random()<.5?'links':'rechts';
+  obs={side,t0:performance.now(),T:Math.max(3600,5200-done*140),lat:0,latT:0,steered:null,emo:ROCKS[rand(ROCKS.length)]};
+  headTarget=0;
+  $('wheel').style.transform='rotate(0deg)';$('wheelBox').classList.remove('wait');
+  later(()=>{mate=side==='links'?'Links!':'Rechts!';mateT=performance.now();say(side==='links'?'Links!':'Rechts!',0,.95,1.25);
+    if(done<SHOW_HINT){$('hint').textContent=side==='links'?'⬅ LINKS':'RECHTS ➡';$('hint').classList.add('on')}},500);
+}
+function steer(dir){
+  if(!obs||obs.steered)return;audio();obs.steered=dir;$('wheelBox').classList.add('wait');
+  $('wheel').style.transform=`rotate(${dir==='links'?-70:70}deg)`;swoosh();$('hint').classList.remove('on');
+  headTarget=dir==='links'?-1:1;
+  // richtig gelenkt: Hindernis zieht an der anderen Seite vorbei
+  obs.latT=dir===obs.side?(dir==='links'?1.25:-1.25):0;
+}
+$('leftBtn').addEventListener('pointerdown',e=>{e.preventDefault();steer('links')});
+$('rightBtn').addEventListener('pointerdown',e=>{e.preventDefault();steer('rechts')});
+cv.addEventListener('pointerdown',e=>{if(mate&&e.clientY<bowY()+20&&Math.abs(e.clientX-W/2)<60){audio();say(mate,0,.95,1.25);mateT=performance.now()}}); // Matrose antippen = nochmal rufen
+
+function loop(now){
+  if(!running)return;const dt=Math.min(.05,(now-lastT)/1000||0);lastT=now;waveOff+=dt*60;
+  heading+=(headTarget-heading)*Math.min(1,dt*4);
+  if(obs){obs.lat+=(obs.latT-obs.lat)*Math.min(1,dt*2.5);
+    const p=(now-obs.t0)/obs.T;
+    if(p>=1&&!obs.hit){obs.hit=true;
+      if(obs.steered===obs.side){good++;ding();next()}
+      else crash()}}
+  draw(now);requestAnimationFrame(loop);
+}
+function next(){done++;$('prog').textContent=`⚓ ${done} / ${TOTAL}`;obs=null;mate='';
+  if(done>=TOTAL){win();return}
+  if(done%4===0)say(['Gut gelenkt!','Super, Kapitän!','Weiter so!'][rand(3)],200);
+  later(newObstacle,1500)}
+function crash(){crashes++;rumms();shake=performance.now();$('hullW').style.height=(crashes*50)+'%';mate='';$('hint').classList.remove('on');
+  if(crashes>=2){later(sink,900);return}
+  say('Rumms! Wasser im Schiff! Hör genau auf den Matrosen!',700);later(()=>{obs=null;next()},2600)}
+function sink(){sinkT=performance.now();say('Oh nein! Das Schiff geht unter!',200);later(()=>end(false),3600)}
+function win(){winT=performance.now();bell();say('Land in Sicht! Wir sind im Hafen!',300);later(()=>end(true),3800)}
+function end(ok){running=false;show('end');
+  $('endBig').textContent=ok?'⚓':'🌊';$('endTitle').textContent=ok?'Hafen erreicht!':'Das Schiff ist gesunken';
+  const st=ok?(crashes===0?3:2):(good>=6?1:0);
+  $('stars').style.display=st?'flex':'none';
+  $('endInfo').textContent=`Eltern: ${good} von ${good+crashes} richtig gelenkt · ${done} Hindernisse geschafft`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');tone([1046,1318,1568][i],.4,.25)},400+i*500)});
+  later(()=>say(ok?(crashes===0?'Super, Kapitän! Kein einziger Rumms!':'Gut gemacht, Kapitän! Wir sind angekommen!'):'Nicht schlimm! Probier es nochmal und hör genau auf den Matrosen!'),1800);
+}
+
+// ---------- Zeichnen ----------
+function draw(now){
+  const sh=shake&&now-shake<500?Math.sin(now/25)*10*(1-(now-shake)/500):0;
+  ctx.save();ctx.translate(sh,0);
+  const H0=hy(),B=bowY(),hx=W/2-heading*W*.35;   // Horizont verschiebt sich beim Lenken
+  // Himmel
+  let g=ctx.createLinearGradient(0,0,0,H0);g.addColorStop(0,'#6FB6E8');g.addColorStop(1,'#CFEAF8');ctx.fillStyle=g;ctx.fillRect(-20,0,W+40,H0);
+  ctx.fillStyle='rgba(255,255,255,.9)';[[.2,.12],[.75,.08]].forEach(([fx,fy],k)=>{const cx=((fx*W-heading*W*.35+now/80*(k+1))%(W+200)+W+200)%(W+200)-100;
+    [[0,0,16],[16,-8,20],[34,0,15]].forEach(([dx,dy,r])=>{ctx.beginPath();ctx.arc(cx+dx,fy*H+dy,r,0,7);ctx.fill()})});
+  // Hafen am Ende
+  if(winT||done>=TOTAL-1){const q=winT?Math.min(1,(now-winT)/2500):0;ctx.font=`${30+q*40}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText('🏘️⛪🏘️',hx,H0+4+q*10)}
+  // Meer
+  g=ctx.createLinearGradient(0,H0,0,H);g.addColorStop(0,'#3A8FC8');g.addColorStop(1,'#1E5F94');ctx.fillStyle=g;ctx.fillRect(-20,H0,W+40,H);
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=2;
+  for(let k=0;k<14;k++){const p=((k/14)+(waveOff/400))%1,y=H0+(H-H0)*p*p;ctx.beginPath();for(let x=-20;x<W+20;x+=24)ctx.lineTo(x,y+Math.sin(x/40+k+now/400)*3*p);ctx.stroke()}
+  // Nebelbank vorne
+  g=ctx.createLinearGradient(0,H0-30,0,B);g.addColorStop(0,'rgba(225,232,238,.95)');g.addColorStop(.75,'rgba(225,232,238,.75)');g.addColorStop(1,'rgba(225,232,238,0)');
+  ctx.fillStyle=g;ctx.fillRect(-20,H0-30,W+40,B-H0+30);
+  // Hindernis (im Nebel erst spät sichtbar)
+  if(obs&&!obs.hit){const p=Math.min(1,(now-obs.t0)/obs.T),y=H0+(B+40-H0)*p*p,sc=.25+p*1.6,x=W/2+obs.lat*W*.45*p;
+    ctx.globalAlpha=Math.max(0,Math.min(1,(p-.45)/.25));ctx.font=`${46*sc}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(obs.emo,x,y);ctx.globalAlpha=1}
+  // Deck (vom Steuerrad nach vorne zum Bug)
+  ctx.restore();ctx.save();ctx.translate(sh,0);
+  g=ctx.createLinearGradient(0,B,0,H);g.addColorStop(0,'#B5824F');g.addColorStop(1,'#8B5A2B');ctx.fillStyle=g;
+  ctx.beginPath();ctx.moveTo(W/2,B-6);ctx.lineTo(W*.98,H);ctx.lineTo(W*.02,H);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(90,52,24,.45)';ctx.lineWidth=2;for(let k=-4;k<=4;k++){ctx.beginPath();ctx.moveTo(W/2,B);ctx.lineTo(W/2+k*W*.12,H);ctx.stroke()}
+  ctx.strokeStyle='#6B3E1E';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(W/2,B-6);ctx.lineTo(W*.98,H);ctx.moveTo(W/2,B-6);ctx.lineTo(W*.02,H);ctx.stroke();
+  // Mast + Segel
+  const mx=W/2,my=B+(H-B)*.38;ctx.fillStyle='#6B3E1E';ctx.fillRect(mx-5,H*.12,10,my-H*.12);
+  ctx.fillStyle='rgba(255,252,240,.92)';ctx.beginPath();ctx.moveTo(mx+6,H*.14);ctx.quadraticCurveTo(mx+W*.3+heading*20,H*.26,mx+6,my-30);ctx.fill();
+  ctx.fillStyle='#E5534B';ctx.beginPath();ctx.moveTo(mx,H*.12);ctx.lineTo(mx+26-heading*8,H*.12+7+Math.sin(now/120)*2);ctx.lineTo(mx,H*.12+14);ctx.fill();
+  // Matrose am Bug
+  const bob=Math.sin(now/300)*2;ctx.font=`${Math.min(W,H)*.09}px system-ui`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText('🧑‍✈️',W/2,B-2+bob);
+  if(mate&&now-mateT<1600){ctx.font=`800 ${Math.min(W,H)*.045}px -apple-system,system-ui`;const tx=done<SHOW_HINT?mate:'❗';
+    const bw=ctx.measureText(tx).width+24,bx=W/2+40,by=B-Math.min(W,H)*.13;ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,by-30,bw,38,14):ctx.rect(bx,by-30,bw,38);ctx.fill();
+    ctx.beginPath();ctx.moveTo(bx+8,by+6);ctx.lineTo(bx-6,by+16);ctx.lineTo(bx+22,by+6);ctx.fill();ctx.fillStyle='#1F3550';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(tx,bx+12,by-11)}
+  // Wasser im Schiff beim Untergang
+  if(sinkT){const q=Math.min(1,(now-sinkT)/3000),lv=H-(H*q);g=ctx.createLinearGradient(0,lv,0,H);g.addColorStop(0,'rgba(58,159,208,.8)');g.addColorStop(1,'rgba(20,70,120,.95)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=12)ctx.lineTo(x,lv+Math.sin(x/30+now/150)*6);ctx.lineTo(W,H);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.6)';for(let k=0;k<12;k++){const bx=(k*97)%W,by=H-((now/4+k*80)%(H*q+1));ctx.beginPath();ctx.arc(bx,by,4+k%3*2,0,7);ctx.fill()}}
+  ctx.restore();
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;done=0;crashes=0;good=0;sinkT=0;winT=0;obs=null;mate='';heading=headTarget=0;$('hullW').style.height='0';$('prog').textContent=`⚓ 0 / ${TOTAL}`;
+  show('game');resize();running=true;lastT=performance.now();requestAnimationFrame(loop);
+  say('Ahoi! Hör auf den Matrosen vorne am Bug. Ruft er links oder rechts, dann dreh das Steuerrad dorthin!',300);later(newObstacle,6500)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;running=false;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+<script src="zeit.js"></script>
+</body>
+</html>
