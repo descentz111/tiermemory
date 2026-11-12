@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zauberer">
+<title>Zauberer</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  :root{--ink:#2F2547}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;color:var(--ink);
+    background:radial-gradient(ellipse at 50% 0%,#5B3E96 0%,#2F2547 70%);font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#2F2547;background:#FFD23F;box-shadow:0 5px 0 #C9A21E}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #C9A21E}
+  #start,#end{justify-content:center;gap:18px;text-align:center;color:#fff}
+  h1{font-size:42px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:76px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .home{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #1E1830}
+  #strip{display:flex;gap:3px;background:#fff;border-radius:16px;padding:6px 8px;box-shadow:0 2px 0 #1E1830}
+  #strip span{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:50%;background:#EEE8F7}
+  #strip span.cur{box-shadow:0 0 0 3px #FFD23F}
+  #wiz{display:flex;align-items:flex-end;margin-top:6px;height:84px}
+  #wiz .w{font-size:72px;line-height:1}
+  #wiz .s{font-size:44px;line-height:1;transform-origin:10% 90%;transition:transform .25s}
+  #wiz .s.swing{transform:rotate(-55deg)}
+  #msg{color:#fff;font-size:22px;font-weight:800;min-height:30px;margin:4px 0 8px;text-align:center}
+  #stage{position:relative;width:min(92vw,420px);height:min(92vw,420px,44vh);background:#FFF8EC;border-radius:28px;box-shadow:0 6px 0 #1E1830,inset 0 0 0 6px #FFD23F;overflow:hidden}
+  .obj{position:absolute;transform:translate(-50%,-50%);line-height:1;transition:opacity .2s,transform .3s}
+  .obj.in{animation:poof .35s}
+  @keyframes poof{from{transform:translate(-50%,-50%) scale(0) rotate(-90deg)}to{transform:translate(-50%,-50%) scale(1)}}
+  .obj.hid{opacity:0}
+  .cloud{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:110px;animation:poof .4s}
+  #hat{position:absolute;bottom:-200px;font-size:150px;line-height:1;transition:bottom .6s cubic-bezier(.4,1.4,.6,1),left .3s;transform:translateX(-50%);filter:drop-shadow(0 6px 4px rgba(0,0,0,.3))}
+  #hat.down{bottom:var(--hb)}
+  #total{position:absolute;top:10px;left:14px;font-family:Schul,system-ui;font-weight:700;font-size:30px;color:#5B3E96;background:#EEE8F7;border-radius:14px;padding:2px 12px;display:none}
+  #answers{display:flex;gap:14px;margin-top:16px}
+  .ans{width:90px;height:90px;border:0;border-radius:24px;background:#FFD23F;box-shadow:0 6px 0 #C9A21E;font-family:Schul,-apple-system,system-ui,sans-serif;font-weight:700;font-size:52px;color:#2F2547}
+  .ans:active{transform:translateY(4px);box-shadow:0 2px 0 #C9A21E}
+  .ans.off{opacity:.3;pointer-events:none}
+  .ans.right{background:#7ED08A;box-shadow:0 6px 0 #4A9E58}
+  .ans.shake{animation:shake .35s}
+  #answers.wait .ans{pointer-events:none;opacity:.5}
+  @keyframes shake{25%{transform:translateX(6px)}75%{transform:translateX(-6px)}}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#BFB3D9}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🧙‍♂️🪄🎩</div>
+  <h1>Zauberer</h1>
+  <p>Schau gut hin!<br>Wie viele hat der Zauberer gezaubert?</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div id="strip"></div>
+    <div style="width:46px"></div>
+  </header>
+  <div id="wiz"><span class="w">🧙‍♂️</span><span class="s" id="wand">🪄</span></div>
+  <div id="msg"></div>
+  <div id="stage"><div id="total"></div><div id="hat">🎩</div></div>
+  <div id="answers"></div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big">🧙‍♂️✨</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rand(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=250){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.88;u.pitch=1.1;window._u=u;sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f,dur,vol=.2,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+const magic=()=>[1046,1318,1568,2093,2637].forEach((f,i)=>tone(f,.3,.12,i*.06));
+const whoosh=()=>[523,392,330].forEach((f,i)=>tone(f,.25,.15,i*.07));
+const ok=()=>{tone(659,.25,.25);tone(880,.35,.25,.12)};
+const oops=()=>{tone(220,.3,.25);tone(196,.4,.25,.15)};
+
+// ---------- Aufgaben ----------
+const ROUNDS=10,ITEMS=[['⭐','Sterne'],['🐰','Kaninchen'],['🌸','Blumen'],['🍬','Bonbons'],['🦋','Schmetterlinge'],['🎈','Luftballons']];
+const DICE={1:[[.5,.5]],2:[[.3,.3],[.7,.7]],3:[[.27,.27],[.5,.5],[.73,.73]],4:[[.3,.3],[.7,.3],[.3,.7],[.7,.7]],
+  5:[[.27,.27],[.73,.27],[.5,.5],[.27,.73],[.73,.73]],6:[[.3,.25],[.7,.25],[.3,.5],[.7,.5],[.3,.75],[.7,.75]]};
+let r=0,task=null,tries=0,res=[],firstTry=0,solved=0,gid=0,seen=new Set();
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+function drawStrip(){$('strip').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="${i===r&&res.length===i?'cur':''}">${res[i]||''}</span>`).join('')}
+function makeTask(){
+  const it=ITEMS[rand(ITEMS.length)];
+  if(r%2===0){const k=r/2;                                       // Blitz-Trick: Runden 0,2,4,6,8
+    let n;do{n=1+rand(k<1?4:6)}while(seen.has('b'+n)&&seen.size<12);seen.add('b'+n);
+    return{kind:'blitz',n,it,dice:k<3,ms:2000-k*250,ans:n}}
+  const k=(r-1)/2;let N,h;                                        // Hut-Trick: Runden 1,3,5,7,9
+  do{N=(k<2?4:6)+rand(k<2?3:5);h=1+rand(N-1)}while(seen.has('h'+N+'-'+h));seen.add('h'+N+'-'+h);
+  return{kind:'hut',N,h,it,ans:h}}
+function options(a,max){const c=shuffle([-2,-1,1,2].map(d=>a+d).filter(x=>x>=1&&x<=max)).slice(0,2);return shuffle([a,...c])}
+function scatter(n){const p=[];for(let t=0;p.length<n&&t<500;t++){const x=.15+Math.random()*.7,y=.15+Math.random()*.7;if(p.every(q=>Math.hypot(q[0]-x,q[1]-y)>.22))p.push([x,y])}return p}
+function put(pos,emo,size,cls=''){const st=$('stage');pos.forEach(([x,y],i)=>st.insertAdjacentHTML('beforeend',
+  `<div class="obj in ${cls}" data-i="${i}" style="left:${x*100}%;top:${y*100}%;font-size:${size}px;animation-delay:${i*40}ms">${emo}</div>`))}
+function clearStage(){$('stage').querySelectorAll('.obj,.cloud').forEach(e=>e.remove());$('hat').classList.remove('down');$('total').style.display='none'}
+function swing(){const w=$('wand');w.classList.add('swing');magic();setTimeout(()=>w.classList.remove('swing'),350)}
+function setAnswers(max){$('answers').innerHTML=options(task.ans,max).map(n=>`<button class="ans" data-n="${n}">${n}</button>`).join('');
+  $('answers').querySelectorAll('.ans').forEach(b=>b.addEventListener('click',()=>answer(+b.dataset.n,b)));$('answers').classList.add('wait')}
+
+function newTask(){task=makeTask();tries=0;drawStrip();clearStage();(task.kind==='blitz'?blitz:hut)(true)}
+// Blitz: kurz zeigen, dann Wolke
+function blitz(first){
+  clearStage();setAnswers(6);const S=$('stage').clientWidth;
+  $('msg').textContent=first?'Schau ganz genau hin! 👀':'Pass auf, nochmal!';if(first)say('Schau ganz genau hin!');
+  later(()=>{swing();put(task.dice?DICE[task.n]:scatter(task.n),task.it[0],S*.17)},first?1500:900);
+  later(()=>{$('stage').querySelectorAll('.obj').forEach(o=>o.classList.add('hid'));$('stage').insertAdjacentHTML('beforeend','<div class="cloud">☁️</div>');whoosh();
+    $('msg').textContent=`Wie viele ${task.it[1]} waren es?`;say(`Wie viele ${task.it[1]} waren es?`,100);$('answers').classList.remove('wait')},(first?1500:900)+task.ms);
+}
+// Hut: alle zeigen, Hut deckt einige ab
+function hut(first){
+  clearStage();setAnswers(10);const N=task.N,h=task.h,S=$('stage').clientWidth;
+  // links die sichtbaren, rechts die, die gleich unter den Hut kommen
+  const grid=(n,x0,x1)=>{const c=Math.ceil(Math.sqrt(n)),rw=Math.ceil(n/c),out=[];for(let k=0;k<n;k++){const cc=k%c,rr=Math.floor(k/c);
+    out.push([x0+(cc+.5)/c*(x1-x0),.5+(rr-(rw-1)/2)*.22])}return out};
+  const pos=grid(N-h,.05,.5).concat(grid(h,.55,.95));
+  $('msg').textContent='Der Zauberer zaubert …';
+  later(()=>{swing();put(pos,task.it[0],Math.min(S*.13,52));$('total').textContent=N;$('total').style.display='block';
+    $('msg').textContent=`Das sind ${N} ${task.it[1]}.`;say(`Das sind ${N} ${task.it[1]}.`)},first?900:500);
+  later(()=>{   // Hut über die versteckten (rechte Hälfte)
+    const hat=$('hat');hat.style.left='75%';hat.style.fontSize=(S*.5)+'px';hat.style.setProperty('--hb',(S*.08)+'px');
+    whoosh();hat.classList.add('down');
+    later(()=>{$('stage').querySelectorAll('.obj').forEach((o,i)=>{if(i>=N-h)o.classList.add('hid')});
+      $('msg').textContent=`Wie viele sind unter dem Hut?`;say(`Draußen sind noch ${N-h}. Wie viele sind unter dem Hut?`,100);$('answers').classList.remove('wait')},500);
+  },first?4200:3200);
+}
+function reveal(){if(task.kind==='blitz'){$('stage').querySelectorAll('.cloud').forEach(c=>c.remove());$('stage').querySelectorAll('.obj').forEach(o=>o.classList.remove('hid'))}
+  else{$('hat').classList.remove('down');$('stage').querySelectorAll('.obj.hid').forEach(o=>{o.classList.remove('hid','in');void o.offsetWidth;o.classList.add('in')})}magic()}
+function answer(n,b){
+  audio();
+  if(n!==task.ans){oops();b.classList.add('shake');setTimeout(()=>b.classList.add('off'),350);tries++;$('answers').classList.add('wait');
+    if(tries<2){if(task.kind==='blitz'){say('Nicht ganz. Pass auf, ich zaubere nochmal!');later(()=>blitz(false),2200)}
+      else{say(`Nicht ganz. Draußen sind ${task.N-task.h}. Wie viele fehlen bis ${task.N}?`);later(()=>{$('answers').classList.remove('wait')},2600)}}
+    else{res.push('·');drawStrip();reveal();solve(false)}
+    return}
+  ok();b.classList.add('right');$('answers').classList.add('wait');if(tries===0)firstTry++;solved++;res.push(tries===0?'⭐':'✔️');drawStrip();reveal();solve(true)}
+function solve(good){
+  const t=task.kind==='blitz'?`Es waren ${task.n} ${task.it[1]}.`:`${task.N-task.h} und ${task.h} sind ${task.N}.`;
+  $('msg').textContent=(good?['Super! ','Toll! ','Richtig! ','Prima! '][rand(4)]:'')+t;say((good?'Richtig! ':'')+t,300);
+  later(()=>{r++;if(r<ROUNDS)newTask();else finish()},3600)}
+function finish(){
+  const st=firstTry>=8?3:solved>=6?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${firstTry} von ${ROUNDS} beim ersten Versuch · ${solved} geschafft`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');tone([1046,1318,1568][i],.4,.25)},400+i*500)});
+  later(()=>say(st===3?'Simsalabim! Du bist ein Zauber-Profi!':st===2?'Toll! Schau beim nächsten Mal ganz genau hin!':'Gut gemacht! Übung macht den Zauberer!'),1900);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;r=0;res=[];firstTry=0;solved=0;seen=new Set();show('game');drawStrip();say('Hallo! Ich bin der Zauberer. Schau gut hin!');later(newTask,2400)}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+<script src="zeit.js"></script>
+</body>
+</html>
