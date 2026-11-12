@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sandschreiben">
+<title>Sandschreiben</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  @font-face{font-family:Schul;src:url(schulschrift.woff2) format('woff2');font-weight:700;font-display:swap}
+  :root{--ink:#5A4024}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;color:var(--ink);
+    background:linear-gradient(#8FD3F0 0%,#BDE6F5 14%,#4FB3E0 14%,#3A9FD0 19%,#F2DDAE 19%);font-family:-apple-system,"SF Pro Rounded","Arial Rounded MT Bold",system-ui,sans-serif}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 14px)}
+  .screen.on{display:flex}
+  .btn{border:0;border-radius:22px;padding:18px 34px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:#E0661E;box-shadow:0 5px 0 #A84A12}
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 #A84A12}
+  #start,#end{justify-content:center;gap:18px;text-align:center}
+  h1{font-size:40px;margin:0} p{margin:0;font-size:20px;font-weight:700}
+  .big{font-size:72px;line-height:1}
+  header{width:100%;display:flex;justify-content:space-between;align-items:center}
+  .home,.eye{border:0;background:#fff;border-radius:16px;width:46px;height:42px;font-size:22px;box-shadow:0 2px 0 #C9A66B}
+  #strip{display:flex;gap:3px;background:#fff;border-radius:16px;padding:6px 8px;box-shadow:0 2px 0 #C9A66B}
+  #strip span{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:50%;background:#F6EBD3}
+  #strip span.cur{box-shadow:0 0 0 3px #FFD23F}
+  #label{margin-top:26px;font-family:Schul,system-ui;font-weight:700;font-size:26px;min-height:34px}
+  #msg{font-size:20px;font-weight:800;min-height:28px;text-align:center}
+  #wrap{flex:1;width:100%;min-height:0;display:flex;align-items:center;justify-content:center}
+  #cv{border-radius:26px;box-shadow:0 6px 0 #C9A66B;touch-action:none}
+  #stars{display:flex;gap:10px;font-size:76px}
+  #stars span{opacity:.18;filter:grayscale(1);transform:scale(.6);transition:all .45s cubic-bezier(.3,1.6,.5,1)}
+  #stars span.on{opacity:1;filter:none;transform:scale(1)}
+  #again{border:0;width:110px;height:110px;border-radius:50%;background:#5BB87A;color:#fff;font-size:54px;box-shadow:0 6px 0 #3F9560;padding-left:10px}
+  #endInfo{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 8px);font-size:12px;color:#8A7356}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen on">
+  <div class="big">🏖️🦀</div>
+  <h1>Sandschreiben</h1>
+  <p>Der Krebs zeigt es dir vor.<br>Dann malst du mit dem Finger in den Sand!</p>
+  <button class="btn" id="go">Los geht's!</button>
+</section>
+
+<section id="game" class="screen">
+  <header>
+    <button class="home" id="homeBtn">🏠</button>
+    <div id="strip"></div>
+    <button class="eye" id="eyeBtn" aria-label="Nochmal zeigen">👀</button>
+  </header>
+  <div id="label"></div>
+  <div id="msg"></div>
+  <div id="wrap"><canvas id="cv"></canvas></div>
+</section>
+
+<section id="end" class="screen">
+  <div class="big">🏖️✨</div>
+  <div id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+  <button id="again" aria-label="Nochmal">▶</button>
+  <div id="endInfo"></div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const rand=n=>Math.floor(Math.random()*n);
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+
+// ---------- Sprache & Töne ----------
+let voice=null;
+function pickVoice(){const v=speechSynthesis.getVoices().filter(x=>x.lang&&x.lang.toLowerCase().startsWith('de'));
+  voice=v.find(x=>/Anna|Helena|Petra|Marlene/i.test(x.name))||v[0]||null}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+let sayT=null;
+function say(t,delay=250){if(!('speechSynthesis' in window))return;speechSynthesis.cancel();clearTimeout(sayT);
+  const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';if(voice)u.voice=voice;u.rate=.88;u.pitch=1.1;window._u=u;sayT=setTimeout(()=>speechSynthesis.speak(u),delay)}
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
+function tone(f,dur,vol=.2,delay=0){if(!ac)return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;
+  g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)}
+function noise(dur,f1,f2,vol){if(!ac)return;const b=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.sin(Math.PI*i/d.length);const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain(),t=ac.currentTime;
+  s.buffer=b;f.type='lowpass';f.frequency.setValueAtTime(f1,t);f.frequency.linearRampToValueAtTime(f2,t+dur);g.gain.value=vol;s.connect(f).connect(g).connect(ac.destination);s.start()}
+let scrT=0;const scratch=()=>{const n=performance.now();if(n-scrT>70){scrT=n;noise(.07,2500,1800,.06)}};
+const wave=()=>noise(1.6,400,1500,.4);
+const ding=()=>{tone(1046,.25,.2);tone(1318,.3,.2,.1);tone(1568,.4,.2,.2)};
+const slip=()=>tone(200,.15,.15);
+
+// ---------- Figuren: Striche im Feld 0–100 ----------
+const L=(x1,y1,x2,y2)=>{const n=Math.max(2,Math.round(Math.hypot(x2-x1,y2-y1)/2));return Array.from({length:n+1},(_,i)=>[x1+(x2-x1)*i/n,y1+(y2-y1)*i/n])};
+const A=(cx,cy,r,a0,a1)=>{const n=Math.max(4,Math.round(Math.abs(a1-a0)*Math.PI/180*r/2));return Array.from({length:n+1},(_,i)=>{const a=(a0+(a1-a0)*i/n)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]})};
+const J=(...p)=>p.reduce((a,b)=>a.concat(a.length?b.slice(1):b),[]);   // Teilstücke zu einem Strich verbinden
+const P=pts=>J(...pts.slice(1).map((p,i)=>L(pts[i][0],pts[i][1],p[0],p[1])));
+const WAVE=Array.from({length:61},(_,i)=>[10+i*80/60,50-18*Math.sin(i/60*Math.PI*4)]);
+const FIG={
+ lines:[['Strich nach unten',[L(50,10,50,90)]],['Strich nach rechts',[L(10,50,90,50)]],['Schräger Strich',[L(20,12,80,88)]]],
+ curves:[['Bogen',[A(50,72,38,180,360)]],['Welle',[WAVE]],['Zickzack',[P([[10,35],[26,70],[42,35],[58,70],[74,35],[90,70]])]]],
+ shapes:[['Kreis',[A(50,50,38,-90,-450)]],['Dreieck',[P([[50,12],[14,86],[86,86],[50,12]])]],['Viereck',[P([[18,18],[18,82],[82,82],[82,18],[18,18]])]]],
+ letters:{
+  M:[L(25,10,25,90),P([[25,10],[50,62],[75,10],[75,90]])],
+  A:[L(50,10,22,90),L(50,10,78,90),L(33,62,67,62)],
+  L:[P([[30,10],[30,90],[72,90]])],
+  I:[L(50,10,50,90)],
+  O:[A(50,50,38,-90,-450)],
+  S:[J(A(50,30,20,-20,-270),A(50,70,20,-90,150))],
+  E:[L(30,10,30,90),L(30,10,72,10),L(30,50,64,50),L(30,90,72,90)],
+  R:[L(30,10,30,90),J(L(30,10,52,10),A(52,30,20,-90,90),L(52,50,30,50)),L(44,50,72,90)],
+  T:[L(20,10,80,10),L(50,10,50,90)],
+  N:[L(28,10,28,90),P([[28,10],[72,90],[72,10]])],
+  U:[J(L(28,10,28,66),A(50,66,22,180,0),L(72,66,72,10))],
+  H:[L(28,10,28,90),L(72,10,72,90),L(28,50,72,50)]
+ }};
+const ORDER=['M','A','L','I','O','S','E','R','T','N','U','H'];
+function myLetters(){let n=3;try{n=Math.max(3,+localStorage.getItem('bbLetters')||3)}catch(e){}return ORDER.slice(0,Math.min(n,ORDER.length))}
+const pick=a=>a[rand(a.length)];
+
+// ---------- Spiel ----------
+const cv=$('cv'),ctx=cv.getContext('2d'),ROUNDS=5;
+let S=300,figs=[],fi=0,fig=null,si=0,prog=0,trail=[],grooves=[],slips=0,figSlips=0,res=[],gid=0,busy=true,drawing=false,demo=null,waveT=0,sandImg=null,sparkle=0;
+function later(fn,ms){const g=gid;setTimeout(()=>{if(g===gid)fn()},ms)}
+const M=()=>S*.08,px=([x,y])=>[M()+x/100*(S-2*M()),M()+y/100*(S-2*M())];
+function resize(){const b=$('wrap').getBoundingClientRect();S=Math.floor(Math.min(b.width,b.height,520));const d=devicePixelRatio||1;
+  cv.width=S*d;cv.height=S*d;cv.style.width=cv.style.height=S+'px';ctx.setTransform(d,0,0,d,0,0);makeSand()}
+function makeSand(){const c=document.createElement('canvas'),d=devicePixelRatio||1;c.width=S*d;c.height=S*d;const x=c.getContext('2d');x.scale(d,d);
+  const g=x.createRadialGradient(S/2,S/2,S*.1,S/2,S/2,S*.75);g.addColorStop(0,'#F6E4BA');g.addColorStop(1,'#EAD39E');x.fillStyle=g;x.fillRect(0,0,S,S);
+  for(let i=0;i<S*S/40;i++){x.fillStyle=Math.random()<.5?'rgba(160,120,60,.18)':'rgba(255,255,255,.35)';x.fillRect(Math.random()*S,Math.random()*S,1.3,1.3)}
+  x.font=`${S*.07}px system-ui`;x.globalAlpha=.85;x.fillText('🐚',S*.04,S*.96);x.fillText('⭐',S*.86,S*.1);sandImg=c}
+function groove(pts,w,col='#C9A66B'){if(pts.length<2)return;ctx.lineCap='round';ctx.lineJoin='round';
+  const path=o=>{ctx.beginPath();ctx.moveTo(pts[0][0]+o,pts[0][1]+o);pts.forEach(p=>ctx.lineTo(p[0]+o,p[1]+o))};
+  ctx.strokeStyle='rgba(255,248,225,.9)';ctx.lineWidth=w+4;path(2);ctx.stroke();       // heller Rand
+  ctx.strokeStyle=col;ctx.lineWidth=w;path(0);ctx.stroke();
+  ctx.strokeStyle='rgba(120,85,40,.35)';ctx.lineWidth=w*.4;path(-1);ctx.stroke()}       // Schatten in der Rille
+function draw(now){
+  if(!$('game').classList.contains('on'))return;
+  ctx.drawImage(sandImg,0,0,S,S);
+  if(fig){
+    // Vorlage: leicht eingeritzt, gestrichelt
+    ctx.setLineDash([2,10]);ctx.lineCap='round';ctx.strokeStyle='rgba(150,110,60,.55)';ctx.lineWidth=S*.03;
+    fig.strokes.forEach((st,k)=>{if(k<si)return;ctx.beginPath();st.forEach((p,i)=>{const q=px(p);i?ctx.lineTo(...q):ctx.moveTo(...q)});ctx.stroke()});ctx.setLineDash([]);
+    grooves.forEach(g=>groove(g,S*.035));
+    if(trail.length)groove(trail,S*.035);
+    // aktueller Strich: Startpunkt + Pfeile
+    if(si<fig.strokes.length&&!demo){const st=fig.strokes[si];
+      for(let k=prog+8;k<st.length-4;k+=14){const a=px(st[k]),b=px(st[Math.min(k+3,st.length-1)]),ang=Math.atan2(b[1]-a[1],b[0]-a[0]);
+        ctx.save();ctx.translate(...a);ctx.rotate(ang);ctx.fillStyle='rgba(224,102,30,.55)';ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(-5,-6);ctx.lineTo(-5,6);ctx.fill();ctx.restore()}
+      const s0=px(st[prog]),pl=1+.15*Math.sin(now/200);ctx.fillStyle='#3F9560';ctx.beginPath();ctx.arc(s0[0],s0[1],S*.035*pl,0,7);ctx.fill();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s0[0],s0[1],S*.012,0,7);ctx.fill()}
+    // Krebs zeigt vor
+    if(demo){const q=Math.min(1,(now-demo.t)/demo.dur),st=fig.strokes[demo.k],i=Math.floor(q*(st.length-1)),p=px(st[i]);
+      demo.pts.push(p);groove(demo.pts,S*.02,'rgba(201,166,107,.8)');
+      ctx.font=`${S*.11}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🦀',p[0],p[1]-S*.04);
+      if(q>=1){demo.k++;demo.pts=[];demo.t=now;if(demo.k>=fig.strokes.length){demo=null;startKid()}else demo.dur=dur(fig.strokes[demo.k])}}
+  }
+  // Glitzern
+  if(sparkle){const q=(now-sparkle)/900;if(q>1)sparkle=0;else{ctx.font=`${S*.06}px system-ui`;ctx.globalAlpha=1-q;
+    grooves.flat().filter((_,i)=>i%9===0).forEach(p=>ctx.fillText('✨',p[0],p[1]-q*20));ctx.globalAlpha=1}}
+  // Welle wischt glatt
+  if(waveT){const q=(now-waveT)/1600;if(q>1)waveT=0;else{const h=S*Math.sin(Math.PI*q)*1.05;
+    const g=ctx.createLinearGradient(0,S-h,0,S);g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(.12,'rgba(79,179,224,.85)');g.addColorStop(1,'rgba(58,159,208,.9)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(0,S);for(let x=0;x<=S;x+=10)ctx.lineTo(x,S-h+Math.sin(x/30+now/150)*8);ctx.lineTo(S,S);ctx.fill()}}
+  requestAnimationFrame(draw);
+}
+const dur=st=>500+st.length*28;
+
+function drawStrip(){$('strip').innerHTML=Array.from({length:ROUNDS},(_,i)=>`<span class="${i===fi&&res.length===i?'cur':''}">${res[i]||''}</span>`).join('')}
+function newFig(){
+  const f=figs[fi];fig={name:f[0],strokes:f[1].map(st=>st.slice()),letter:f[2]};si=0;prog=0;trail=[];grooves=[];figSlips=0;busy=true;drawStrip();
+  $('label').textContent=fig.letter?fig.letter+fig.letter.toLowerCase():fig.name;
+  $('msg').textContent='Schau dem Krebs zu! 🦀';say(fig.letter?`Der Buchstabe ${fig.letter}. Schau zu!`:`${fig.name}. Schau zu!`);
+  later(showDemo,1500);
+}
+function showDemo(){busy=true;trail=[];demo={k:0,t:performance.now(),dur:dur(fig.strokes[0]),pts:[]};
+  if(si>0){si=0;prog=0;grooves=[]}}
+function startKid(){busy=false;$('msg').textContent='Jetzt du! Fang beim grünen Punkt an.';say('Jetzt du! Fang beim grünen Punkt an.',150)}
+$('eyeBtn').addEventListener('click',()=>{audio();if(fig&&!demo&&!waveT){$('msg').textContent='Schau dem Krebs zu! 🦀';showDemo()}});
+
+// ---------- Nachspuren mit Reihenfolge ----------
+function toField(e){const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;return[(x-M())/(S-2*M())*100,(y-M())/(S-2*M())*100,x,y]}
+const TOL=13;   // großzügig (Einheiten von 100)
+cv.addEventListener('pointerdown',e=>{e.preventDefault();audio();if(busy||!fig)return;const [x,y,cx,cy]=toField(e),st=fig.strokes[si];
+  if(Math.hypot(st[prog][0]-x,st[prog][1]-y)<TOL+3){drawing=true;trail=[[cx,cy]];cv.setPointerCapture(e.pointerId)}
+  else{$('msg').textContent='Fang beim grünen Punkt an! 🟢';slip()}});
+cv.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const [x,y,cx,cy]=toField(e),st=fig.strokes[si];
+  let best=-1,bd=1e9;for(let k=prog;k<Math.min(st.length,prog+18);k++){const d=Math.hypot(st[k][0]-x,st[k][1]-y);if(d<bd){bd=d;best=k}}
+  if(bd>TOL*1.5){drawing=false;slips++;figSlips++;slip();if(trail.length>1)grooves.push(trail);trail=[];$('msg').textContent='Hoppla! Mach beim grünen Punkt weiter.';return}
+  trail.push([cx,cy]);scratch();if(best>prog)prog=best;
+  if(prog>=st.length-3){drawing=false;grooves.push(trail);trail=[];tone(784,.15,.15);si++;prog=0;
+    if(si>=fig.strokes.length)figDone();else $('msg').textContent='Super! Jetzt der nächste Strich.'}});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{if(drawing){drawing=false;if(trail.length>1)grooves.push(trail);trail=[];$('msg').textContent='Mach beim grünen Punkt weiter.'}}));
+
+function figDone(){busy=true;ding();sparkle=performance.now();res.push(figSlips===0?'⭐':'✔️');drawStrip();
+  const lob=['Super!','Toll!','Prima!','Wunderschön!'][rand(4)];$('msg').textContent=lob+' ✨';
+  say(fig.letter?`${lob} Das ist ein ${fig.letter}.`:`${lob} ${fig.name}!`,200);
+  later(()=>{wave();waveT=performance.now()},1900);
+  later(()=>{grooves=[];fig=null;$('label').textContent=''},2700);
+  later(()=>{fi++;if(fi<ROUNDS)newFig();else finish()},3700)}
+function finish(){
+  const st=slips<=2?3:slips<=7?2:1;show('end');
+  $('endInfo').textContent=`Eltern: ${ROUNDS} Figuren · ${slips}× abgerutscht`;
+  $('stars').querySelectorAll('span').forEach(x=>x.classList.remove('on'));
+  $('stars').querySelectorAll('span').forEach((x,i)=>{if(i<st)later(()=>{x.classList.add('on');tone([1046,1318,1568][i],.4,.25)},400+i*500)});
+  later(()=>say(st===3?'Super! Du schreibst wunderschön in den Sand!':st===2?'Toll gemacht! Fahr beim nächsten Mal ganz langsam!':'Gut gemacht! Übung macht den Meister!'),1900);
+}
+function startGame(){audio();if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}
+  gid++;fi=0;res=[];slips=0;const lt=myLetters(),l1=pick(lt);let l2=pick(lt);while(l2===l1&&lt.length>1)l2=pick(lt);
+  figs=[pick(FIG.lines),pick(FIG.curves),pick(FIG.shapes),[l1,FIG.letters[l1],l1],[l2,FIG.letters[l2],l2]];
+  show('game');resize();requestAnimationFrame(draw);newFig()}
+$('go').addEventListener('click',startGame);
+$('again').addEventListener('click',startGame);
+$('homeBtn').addEventListener('click',()=>{gid++;demo=null;fig=null;if('speechSynthesis' in window)speechSynthesis.cancel();show('start')});
+addEventListener('resize',()=>{if($('game').classList.contains('on'))resize()});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js');
+document.addEventListener('gesturestart',e=>e.preventDefault());
+</script>
+<script src="zeit.js"></script>
+</body>
+</html>
